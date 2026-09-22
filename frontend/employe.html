@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Commandes du personnel — Vite & Gourmand</title>
+  <style>
+    :root { font-family: system-ui, sans-serif; color: #203329; background: #f5f7f3; }
+    body { max-width: 1100px; margin: 0 auto; padding: 1.5rem; }
+    header, .actions { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; }
+    section, article { background: white; border: 1px solid #d6dfd7; border-radius: .7rem; padding: 1rem; margin: 1rem 0; }
+    form { display: grid; gap: .8rem; max-width: 420px; }
+    label { display: grid; gap: .3rem; }
+    input, select, button { font: inherit; padding: .55rem; border-radius: .35rem; border: 1px solid #819587; }
+    button { background: #245a3c; color: white; cursor: pointer; }
+    button:disabled { opacity: .55; cursor: not-allowed; }
+    .secondary { background: white; color: #245a3c; }
+    .error { color: #9b2226; }
+    .muted { color: #526558; }
+    [hidden] { display: none !important; }
+    .orders { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 1rem; }
+    .orders article { margin: 0; }
+    .orders dl { display: grid; grid-template-columns: auto 1fr; gap: .35rem .8rem; }
+    dt { font-weight: 650; }
+    dd { margin: 0; overflow-wrap: anywhere; }
+  </style>
+</head>
+<body>
+  <header><h1>Vite & Gourmand · Espace personnel</h1><button id="logout" class="secondary" hidden>Déconnexion</button></header>
+  <p id="message" role="status" aria-live="polite"></p>
+  <section id="login-panel">
+    <h2>Connexion du personnel</h2>
+    <form id="login-form">
+      <label>Adresse e-mail <input name="email" type="email" autocomplete="username" required></label>
+      <label>Mot de passe <input name="mot_de_passe" type="password" autocomplete="current-password" required></label>
+      <button type="submit">Se connecter</button>
+    </form>
+    <p class="muted">Accès réservé aux employés et administrateurs.</p>
+  </section>
+  <section id="dashboard" hidden>
+    <div class="actions"><h2>Commandes</h2><button id="refresh" type="button" class="secondary">Actualiser</button></div>
+    <p class="muted">Jusqu'à 200 commandes sont affichées. Les changements de statut sont enregistrés dans l'historique.</p>
+    <div id="orders" class="orders"></div>
+  </section>
+  <script>
+    'use strict';
+    const api = '../backend/api/';
+    const transitions = {
+      'en attente': ['accepté'],
+      'accepté': ['en préparation'],
+      'en préparation': ['en cours de livraison'],
+      'en cours de livraison': ['livré'],
+      'livré': ['en attente du retour matériel', 'terminée'],
+      'en attente du retour matériel': ['terminée'],
+      'terminée': []
+    };
+    let csrfToken = null;
+    const byId = id => document.getElementById(id);
+    function notify(text, error = false) {
+      byId('message').textContent = text;
+      byId('message').className = error ? 'error' : '';
+    }
+    async function request(endpoint, options = {}) {
+      const response = await fetch(api + endpoint, { credentials: 'same-origin', cache: 'no-store', ...options });
+      let data;
+      try { data = await response.json(); } catch { throw new Error('Réponse serveur illisible.'); }
+      if (!response.ok) throw new Error(data.erreur || 'Une erreur est survenue.');
+      return data;
+    }
+    function showDashboard(visible) {
+      byId('dashboard').hidden = !visible;
+      byId('login-panel').hidden = visible;
+      byId('logout').hidden = !visible;
+    }
+    function detail(list, label, value) {
+      const dt = document.createElement('dt'); dt.textContent = label;
+      const dd = document.createElement('dd'); dd.textContent = value == null ? 'Non renseigné' : String(value);
+      list.append(dt, dd);
+    }
+    function render(orders) {
+      const container = byId('orders'); container.replaceChildren();
+      if (!orders.length) { const p = document.createElement('p'); p.textContent = 'Aucune commande.'; container.append(p); return; }
+      for (const order of orders) {
+        const card = document.createElement('article');
+        const title = document.createElement('h3'); title.textContent = `Commande n° ${order.commande_id}`;
+        const details = document.createElement('dl');
+        detail(details, 'Client', `${order.client_prenom} ${order.client_nom}`);
+        detail(details, 'Contact', order.client_email);
+        detail(details, 'Téléphone', order.client_telephone);
+        detail(details, 'Menu', order.menu_titre);
+        detail(details, 'Prestation', `${order.date_prestation} à ${order.heure_livraison}`);
+        detail(details, 'Livraison', order.lieu_livraison);
+        detail(details, 'Convives', order.nombre_personnes);
+        detail(details, 'Prix total', `${order.prix_total} €`);
+        detail(details, 'Statut', order.statut);
+        card.append(title, details);
+        const next = transitions[order.statut] || [];
+        if (next.length) {
+          const form = document.createElement('form');
+          const label = document.createElement('label'); label.textContent = 'Passer au statut';
+          const select = document.createElement('select'); select.required = true;
+          for (const status of next) { const option = document.createElement('option'); option.value = status; option.textContent = status; select.append(option); }
+          label.append(select);
+          const submit = document.createElement('button'); submit.type = 'submit'; submit.textContent = 'Confirmer le changement';
+          form.append(label, submit);
+          form.addEventListener('submit', async event => {
+            event.preventDefault();
+            if (!csrfToken || !confirm(`Confirmer le passage de la commande ${order.commande_id} à « ${select.value} » ?`)) return;
+            submit.disabled = true;
+            try {
+              await request('statut_commande.php', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken }, body: JSON.stringify({ commande_id: Number(order.commande_id), statut: select.value }) });
+              await loadOrders(); notify(`Commande ${order.commande_id} mise à jour.`);
+            } catch (error) { notify(error.message, true); submit.disabled = false; }
+          });
+          card.append(form);
+        }
+        container.append(card);
+      }
+    }
+    async function loadOrders() {
+      const data = await request('commandes_employe.php');
+      render(Array.isArray(data.commandes) ? data.commandes : []);
+    }
+    byId('login-form').addEventListener('submit', async event => {
+      event.preventDefault();
+      const button = event.currentTarget.querySelector('button'); button.disabled = true;
+      const form = new FormData(event.currentTarget);
+      try {
+        const data = await request('connexion.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: form.get('email'), mot_de_passe: form.get('mot_de_passe') }) });
+        if (!['employe', 'administrateur'].includes(data.utilisateur?.role)) {
+          csrfToken = data.csrf_token;
+          await request('deconnexion.php', { method: 'POST', headers: { 'X-CSRF-Token': csrfToken } });
+          csrfToken = null;
+          throw new Error('Cet espace est réservé au personnel.');
+        }
+        csrfToken = data.csrf_token;
+        showDashboard(true);
+        await loadOrders();
+        event.currentTarget.reset(); notify('Connexion réussie.');
+      } catch (error) { notify(error.message, true); } finally { button.disabled = false; }
+    });
+    byId('refresh').addEventListener('click', async () => {
+      try { await loadOrders(); notify('Commandes actualisées.'); } catch (error) { notify(error.message, true); }
+    });
+    byId('logout').addEventListener('click', async () => {
+      try {
+        await request('deconnexion.php', { method: 'POST', headers: { 'X-CSRF-Token': csrfToken || '' } });
+        csrfToken = null; byId('orders').replaceChildren(); showDashboard(false); notify('Déconnexion réussie.');
+      } catch (error) { notify(error.message, true); }
+    });
+  </script>
+</body>
+</html>
