@@ -37,16 +37,23 @@ $ville = $input['ville_livraison'] ?? null;
 $dateValide = is_string($date) && preg_match('/^\d{4}-\d{2}-\d{2}$/D', $date);
 if ($dateValide) {
     $parsed = DateTimeImmutable::createFromFormat('!Y-m-d', $date);
-    $dateValide = $parsed !== false && $parsed->format('Y-m-d') === $date && $date >= date('Y-m-d');
+    $dateValide = $parsed !== false && $parsed->format('Y-m-d') === $date;
 }
-if ($menuId === false || $personnes === false || !$dateValide
-    || !is_string($heure) || !preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/D', $heure)
+$heureValide = is_string($heure) && preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/D', $heure);
+// Les dates et heures de livraison sont interprétées dans le fuseau du restaurant.
+if ($dateValide && $heureValide) {
+    $timezone = new DateTimeZone('Europe/Paris');
+    $prestation = DateTimeImmutable::createFromFormat('!Y-m-d H:i', $date . ' ' . $heure, $timezone);
+    $dateValide = $prestation !== false
+        && $prestation->format('Y-m-d H:i') === $date . ' ' . $heure
+        && $prestation > new DateTimeImmutable('now', $timezone);
+}
+if ($menuId === false || $personnes === false || !$dateValide || !$heureValide
     || !is_string($lieu) || trim($lieu) === '' || strlen(trim($lieu)) > 255
     || !is_string($ville) || trim($ville) === '' || strlen(trim($ville)) > 100) {
-    sendJsonResponse(['erreur' => 'Données de commande invalides. Indiquer notamment ville_livraison.'], 422);
+    sendJsonResponse(['erreur' => 'Données de commande invalides : choisir notamment une date et une heure futures et indiquer ville_livraison.'], 422);
     exit;
 }
-// Le nom Bordeaux ne contient que des caractères ASCII : strtolower suffit ici.
 // Aucun kilométrage vérifiable n'est disponible dans le modèle actuel.
 // Ne pas inventer les 0,59 €/km ni accepter un kilométrage fourni librement par le client.
 if (strtolower(trim($ville)) !== 'bordeaux') {
@@ -72,9 +79,10 @@ try {
     }
     require_once __DIR__ . '/../config/database.php';
     $pdo->beginTransaction();
-    $client = $pdo->prepare('SELECT actif FROM utilisateur WHERE utilisateur_id = :id FOR UPDATE');
+    $client = $pdo->prepare('SELECT actif, role FROM utilisateur WHERE utilisateur_id = :id FOR UPDATE');
     $client->execute(['id' => $utilisateurId]);
-    if (!(bool) $client->fetchColumn()) {
+    $compte = $client->fetch(PDO::FETCH_ASSOC);
+    if (!$compte || !(bool) $compte['actif'] || $compte['role'] !== 'utilisateur') {
         $pdo->rollBack();
         sendJsonResponse(['erreur' => 'Compte indisponible.'], 403);
         exit;
@@ -118,6 +126,8 @@ try {
     if ($update->rowCount() !== 1) {
         throw new RuntimeException('Stock modifié pendant la commande.');
     }
+    $historique = $pdo->prepare('INSERT INTO suivi_commande (commande_id, ancien_statut, nouveau_statut) VALUES (:commande_id, NULL, :nouveau_statut)');
+    $historique->execute(['commande_id' => $commandeId, 'nouveau_statut' => 'en attente']);
     $pdo->commit();
     sendJsonResponse(['message' => 'Demande de commande enregistrée, en attente de validation.', 'commande_id' => $commandeId, 'prix_menu' => number_format($prixMenu, 2, '.', ''), 'reduction' => number_format($reduction, 2, '.', ''), 'frais_livraison' => '0.00', 'prix_total' => $prixTotal, 'statut' => 'en attente'], 201);
 } catch (Throwable $e) {
