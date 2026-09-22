@@ -30,7 +30,7 @@
   </section>
   <section id="orders-panel" hidden>
     <h2>Mes commandes en attente</h2>
-    <p>Seules les demandes non encore acceptées peuvent être annulées. L'annulation est définitive et retire la demande de votre liste.</p>
+    <p>Seules les demandes non encore acceptées peuvent être annulées. L'annulation est définitive, mais la commande et son historique restent consultables dans votre espace client.</p>
     <button id="refresh" type="button">Actualiser</button>
     <button id="logout" type="button">Se déconnecter</button>
     <div id="orders"></div>
@@ -68,7 +68,7 @@
               body: JSON.stringify({ commande_id: Number(order.commande_id) })
             });
             await loadOrders();
-            notify(`Commande n° ${order.commande_id} annulée.`);
+            notify(`Commande n° ${order.commande_id} annulée. Elle reste visible dans l'historique de votre espace client.`);
           } catch (error) { notify(error.message, true); button.disabled = false; }
         });
         card.append(heading, details, button); container.append(card);
@@ -104,6 +104,20 @@
         csrfToken = null; byId('orders').replaceChildren(); showOrders(false); notify('Déconnexion réussie.');
       } catch (error) { notify(error.message, true); }
     });
+    (async () => {
+      try {
+        const data = await request('session_courante.php');
+        if (data.utilisateur?.role !== 'utilisateur') return;
+        csrfToken = data.csrf_token;
+        showOrders(true);
+        await loadOrders();
+      } catch (error) {
+        csrfToken = null;
+        byId('orders').replaceChildren();
+        showOrders(false);
+        if (error.message !== 'Authentification requise.') notify(error.message, true);
+      }
+    })();
   </script>
 </body>
 </html>
