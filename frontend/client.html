@@ -52,7 +52,7 @@
     </section>
     <section>
       <div class="actions"><h2>Mes commandes</h2><button id="refresh" type="button" class="secondary">Actualiser</button></div>
-      <p class="muted">Une demande peut être annulée uniquement tant qu'elle est en attente. L'annulation supprime actuellement la demande de la liste.</p>
+      <p class="muted">Une demande peut être annulée uniquement tant qu'elle est en attente. Une commande annulée reste consultable dans cette liste et dans son historique de suivi.</p>
       <div id="orders" class="cards"></div>
     </section>
   </main>
@@ -146,13 +146,13 @@
         if (order.statut === 'en attente') {
           const cancelButton = document.createElement('button'); cancelButton.type = 'button'; cancelButton.textContent = 'Annuler cette demande';
           cancelButton.addEventListener('click', async () => {
-            if (!window.confirm(`Annuler la commande n° ${order.commande_id} ? Cette action est irréversible et la demande sera supprimée.`)) return;
+            if (!window.confirm(`Annuler définitivement la commande n° ${order.commande_id} ? Elle restera consultable dans votre historique.`)) return;
             cancelButton.disabled = true;
             try {
               if (!csrfToken) throw new Error('Reconnectez-vous avant d’annuler.');
               await request('annuler_commande.php', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken }, body: JSON.stringify({ commande_id: Number(order.commande_id) }) });
               await Promise.all([loadOrders(), loadMenus()]);
-              notify(`Commande n° ${order.commande_id} annulée. Le stock du menu a été restitué.`);
+              notify(`Commande n° ${order.commande_id} annulée. Elle reste consultable dans votre historique et le stock du menu a été restitué.`);
             } catch (error) {
               notify(error.message, true);
               if (error.status === 409 || error.status === 404) { try { await loadOrders(); } catch (refreshError) { notify(refreshError.message, true); } }
