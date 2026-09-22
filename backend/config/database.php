@@ -21,8 +21,7 @@ try {
         ]
     );
 } catch (PDOException $e) {
-    // Le détail de l'erreur (hôte, identifiants, etc.) ne doit pas être renvoyé au client.
+    // Journalisation côté serveur uniquement : aucun identifiant n'est exposé au client.
     error_log('Échec de connexion à la base de données : ' . $e->getMessage());
-    http_response_code(500);
-    exit('Erreur interne de connexion à la base de données.');
+    throw new RuntimeException('Connexion à la base de données indisponible.', 0, $e);
 }
