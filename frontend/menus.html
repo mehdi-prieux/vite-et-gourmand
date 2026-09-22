@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tous les menus — Vite & Gourmand</title>
+  <link rel="stylesheet" href="assets/site.css">
+  <script src="assets/layout.js" defer></script><script src="assets/site.js" defer></script><script src="assets/menus.js" defer></script>
+</head>
+<body data-page="menus">
+  <a class="skip-link" href="#contenu">Aller au contenu</a><header class="site-header" data-site-header></header>
+  <main id="contenu" class="section container">
+    <div class="section-heading"><p class="eyebrow">Notre catalogue</p><h1>Tous nos menus</h1><p class="lead">Filtrez les propositions sans recharger la page, puis consultez les plats, allergènes et conditions de chaque menu.</p></div>
+    <form id="filters" class="panel filters" role="search">
+      <label>Prix minimum (€)<input name="prix_min" type="number" min="0" step="1"></label>
+      <label>Prix maximum (€)<input name="prix_max" type="number" min="0" step="1"></label>
+      <label>Thème<select name="theme"><option value="">Tous</option></select></label>
+      <label>Régime<select name="regime"><option value="">Tous</option></select></label>
+      <label>Personnes minimum<input name="personnes" type="number" min="1" step="1"></label>
+      <button type="reset">Effacer les filtres</button>
+    </form>
+    <p id="count" role="status" aria-live="polite"></p>
+    <div id="menus" class="cards" aria-live="polite"><p>Chargement des menus…</p></div>
+  </main>
+  <footer class="site-footer" data-site-footer></footer>
+</body>
+</html>

@@ -11,7 +11,7 @@
     section, article { background: white; border: 1px solid #d6dfd7; border-radius: .7rem; padding: 1rem; margin: 1rem 0; }
     form { display: grid; gap: .8rem; max-width: 420px; }
     label { display: grid; gap: .3rem; }
-    input, select, button { font: inherit; padding: .55rem; border-radius: .35rem; border: 1px solid #819587; }
+    input, select, textarea, button { font: inherit; padding: .55rem; border-radius: .35rem; border: 1px solid #819587; }
     button { background: #245a3c; color: white; cursor: pointer; }
     button:disabled { opacity: .55; cursor: not-allowed; }
     .secondary { background: white; color: #245a3c; }
@@ -25,10 +25,15 @@
     dd { margin: 0; overflow-wrap: anywhere; }
     .history { padding-left: 1.4rem; }
     .history li { margin: .5rem 0; }
+    :focus-visible { outline: 3px solid #8a5300; outline-offset: 3px; }
+    .skip-link { position: absolute; left: .5rem; top: -5rem; padding: .7rem 1rem; background: white; z-index: 2; }
+    .skip-link:focus { top: .5rem; }
   </style>
 </head>
 <body>
-  <header><h1>Vite & Gourmand · Espace personnel</h1><button id="logout" type="button" class="secondary" hidden>Déconnexion</button></header>
+  <a class="skip-link" href="#contenu">Aller au contenu</a>
+  <header><h1>Vite & Gourmand · Espace personnel</h1><div class="actions"><a href="gestion-catalogue.html">Gérer le catalogue</a><a href="avis-employe.html">Modérer les avis</a><button id="logout" type="button" class="secondary" hidden>Déconnexion</button></div></header>
+  <main id="contenu">
   <p id="message" role="status" aria-live="polite"></p>
   <section id="login-panel" hidden>
     <h2>Connexion du personnel</h2>
@@ -65,6 +70,7 @@
     <p class="muted">Jusqu'à 200 commandes correspondent aux filtres affichés. Les changements de statut sont enregistrés dans l'historique. Une commande annulée ne peut plus changer de statut.</p>
     <div id="orders" class="orders"></div>
   </section>
+  </main>
   <script>
     'use strict';
     const api = '../backend/api/';
@@ -115,6 +121,9 @@
         detail(details, 'Menu', order.menu_titre);
         detail(details, 'Prestation', `${order.date_prestation} à ${order.heure_livraison}`);
         detail(details, 'Livraison', order.lieu_livraison);
+        detail(details, 'Ville', order.ville_livraison);
+        detail(details, 'Distance', `${order.distance_km || 0} km`);
+        detail(details, 'Frais de livraison', `${order.frais_livraison || '0.00'} €`);
         detail(details, 'Convives', order.nombre_personnes);
         detail(details, 'Prix total', `${order.prix_total} €`);
         detail(details, 'Statut', order.statut);
@@ -156,6 +165,61 @@
           finally { historyButton.disabled = false; }
         });
         card.append(historyButton, historyPanel);
+        if (!['annulée', 'terminée'].includes(order.statut)) {
+          const editForm = document.createElement('form');
+          const editHeading = document.createElement('h4'); editHeading.textContent = 'Modifier après contact';
+          const editFields = [
+            ['Date', 'date_prestation', 'date', order.date_prestation],
+            ['Heure', 'heure_livraison', 'time', String(order.heure_livraison).slice(0, 5)],
+            ['Adresse', 'lieu_livraison', 'text', order.lieu_livraison],
+            ['Ville', 'ville_livraison', 'text', order.ville_livraison || 'Bordeaux'],
+            ['Convives', 'nombre_personnes', 'number', order.nombre_personnes]
+          ];
+          for (const [labelText, name, type, value] of editFields) {
+            const label = document.createElement('label'); label.textContent = labelText;
+            const input = document.createElement('input'); input.name = name; input.type = type; input.value = value || ''; input.required = true;
+            if (type === 'number') { input.min = '1'; input.step = '1'; }
+            label.append(input); editForm.append(label);
+          }
+          const editModeLabel = document.createElement('label'); editModeLabel.textContent = 'Client contacté par';
+          const editMode = document.createElement('select'); editMode.name = 'mode_contact';
+          for (const value of ['email', 'telephone']) { const option = document.createElement('option'); option.value = value; option.textContent = value === 'email' ? 'E-mail' : 'Téléphone'; editMode.append(option); }
+          editModeLabel.append(editMode);
+          const editReasonLabel = document.createElement('label'); editReasonLabel.textContent = 'Motif de modification';
+          const editReason = document.createElement('textarea'); editReason.name = 'motif'; editReason.required = true; editReason.minLength = 10; editReason.maxLength = 1000; editReasonLabel.append(editReason);
+          const editSubmit = document.createElement('button'); editSubmit.type = 'submit'; editSubmit.textContent = 'Enregistrer la modification';
+          editForm.prepend(editHeading); editForm.append(editModeLabel, editReasonLabel, editSubmit);
+          editForm.addEventListener('submit', async event => {
+            event.preventDefault();
+            if (!csrfToken || !confirm(`Confirmer la modification de la commande ${order.commande_id} après contact du client ?`)) return;
+            editSubmit.disabled = true;
+            const fields = new FormData(editForm);
+            try {
+              const result = await request('intervention_commande.php', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken }, body: JSON.stringify({ action: 'modifier', commande_id: Number(order.commande_id), date_prestation: fields.get('date_prestation'), heure_livraison: fields.get('heure_livraison'), lieu_livraison: fields.get('lieu_livraison'), ville_livraison: fields.get('ville_livraison'), nombre_personnes: Number(fields.get('nombre_personnes')), mode_contact: fields.get('mode_contact'), motif: fields.get('motif') }) });
+              await loadOrders(); notify(`Commande ${order.commande_id} modifiée et intervention historisée. Nouveau total : ${result.prix_total} €.`);
+            } catch (error) { notify(error.message, true); editSubmit.disabled = false; }
+          });
+          card.append(editForm);
+          const cancelForm = document.createElement('form');
+          const modeLabel = document.createElement('label'); modeLabel.textContent = 'Client contacté par';
+          const mode = document.createElement('select');
+          for (const value of ['email', 'telephone']) { const option = document.createElement('option'); option.value = value; option.textContent = value === 'email' ? 'E-mail' : 'Téléphone'; mode.append(option); }
+          modeLabel.append(mode);
+          const reasonLabel = document.createElement('label'); reasonLabel.textContent = 'Motif d’annulation';
+          const reason = document.createElement('textarea'); reason.required = true; reason.minLength = 10; reason.maxLength = 1000; reasonLabel.append(reason);
+          const cancel = document.createElement('button'); cancel.type = 'submit'; cancel.textContent = 'Annuler après contact';
+          cancelForm.append(modeLabel, reasonLabel, cancel);
+          cancelForm.addEventListener('submit', async event => {
+            event.preventDefault();
+            if (!csrfToken || !confirm(`Confirmer l’annulation de la commande ${order.commande_id} après contact du client ?`)) return;
+            cancel.disabled = true;
+            try {
+              await request('intervention_commande.php', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken }, body: JSON.stringify({ action: 'annuler', commande_id: Number(order.commande_id), mode_contact: mode.value, motif: reason.value }) });
+              await loadOrders(); notify(`Commande ${order.commande_id} annulée et intervention historisée.`);
+            } catch (error) { notify(error.message, true); cancel.disabled = false; }
+          });
+          card.append(cancelForm);
+        }
         const next = transitions[order.statut] || [];
         if (next.length) {
           const form = document.createElement('form');
@@ -199,8 +263,9 @@
     });
     byId('login-form').addEventListener('submit', async event => {
       event.preventDefault();
-      const button = event.currentTarget.querySelector('button'); button.disabled = true;
-      const form = new FormData(event.currentTarget);
+      const formElement = event.currentTarget;
+      const button = formElement.querySelector('button'); button.disabled = true;
+      const form = new FormData(formElement);
       try {
         const data = await request('connexion.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: form.get('email'), mot_de_passe: form.get('mot_de_passe') }) });
         if (!['employe', 'administrateur'].includes(data.utilisateur?.role)) {
@@ -212,7 +277,7 @@
         csrfToken = data.csrf_token;
         showDashboard(true);
         await loadOrders();
-        event.currentTarget.reset(); notify('Connexion réussie.');
+        formElement.reset(); notify('Connexion réussie.');
       } catch (error) { notify(error.message, true); } finally { button.disabled = false; }
     });
     byId('refresh').addEventListener('click', async () => {

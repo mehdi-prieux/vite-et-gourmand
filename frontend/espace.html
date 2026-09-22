@@ -9,22 +9,26 @@
     body { max-width: 850px; margin: auto; padding: 1.5rem; }
     nav { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 1rem; }
     nav a { display: block; padding: 1.5rem; background: #fff; border: 1px solid #d6dfd7; border-radius: .7rem; color: #245a3c; text-decoration: none; }
-    nav a:focus-visible, nav a:hover { outline: 3px solid #245a3c; outline-offset: 2px; }
+    nav a:focus-visible, nav a:hover, button:focus-visible, input:focus-visible { outline: 3px solid #245a3c; outline-offset: 2px; }
     nav strong { display: block; margin-bottom: .5rem; }
     .muted { color: #526558; }
     form { display: flex; flex-wrap: wrap; gap: .6rem; align-items: end; margin: 1.5rem 0; }
     label { display: grid; gap: .3rem; }
     input, button { font: inherit; padding: .55rem; border-radius: .35rem; border: 1px solid #819587; }
     button { background: #245a3c; color: white; cursor: pointer; }
+    .skip-link { position: absolute; left: .5rem; top: -5rem; padding: .7rem 1rem; background: white; z-index: 2; }
+    .skip-link:focus { top: .5rem; }
   </style>
 </head>
 <body>
-  <main>
+  <a class="skip-link" href="#contenu">Aller au contenu</a>
+  <main id="contenu">
     <h1>Vite & Gourmand · Mon espace</h1>
     <p>Choisissez l'action que vous souhaitez effectuer.</p>
     <nav aria-label="Parcours client">
       <a href="inscription.html"><strong>Créer un compte</strong>Renseigner mes coordonnées et choisir un mot de passe de 12 caractères minimum avec majuscule, minuscule, chiffre et caractère spécial.</a>
       <a href="client.html"><strong>Commander et suivre</strong>Me connecter, choisir un menu, passer commande et consulter son historique, y compris les commandes annulées.</a>
+      <a href="profil.html"><strong>Mes informations</strong>Consulter et modifier mes coordonnées personnelles.</a>
       <a href="annulation.html"><strong>Annuler une demande</strong>Annuler uniquement une commande encore en attente de validation, sans effacer son historique.</a>
     </nav>
     <form action="modifier-commande.html" method="get">
@@ -35,6 +39,7 @@
     </form>
     <p class="muted">Retrouvez le numéro dans « Commander et suivre ». Le formulaire vérifie que la commande vous appartient et qu'elle est toujours en attente. Le menu ne peut pas être changé.</p>
     <p class="muted">Votre connexion est conservée entre ces pages tant que votre session est valide. Une demande déjà acceptée ne peut pas être annulée ou modifiée en ligne. Sur une base de données existante, les migrations de statuts et d'historisation doivent être appliquées avant d'utiliser ces fonctions.</p>
+    <p><a href="employe.html">Espace employé</a> · <a href="admin.html">Administration des employés</a></p>
   </main>
 </body>
 </html>

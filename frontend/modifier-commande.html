@@ -14,12 +14,16 @@
     button { background: #245a3c; color: white; cursor: pointer; }
     button:disabled { opacity: .55; }
     .error { color: #9b2226; }
+    :focus-visible { outline: 3px solid #8a5300; outline-offset: 3px; }
+    .skip-link { position: absolute; left: .5rem; top: -5rem; padding: .7rem 1rem; background: white; z-index: 2; }
+    .skip-link:focus { top: .5rem; }
     [hidden] { display: none !important; }
   </style>
 </head>
 <body>
+  <a class="skip-link" href="#contenu">Aller au contenu</a>
   <p><a href="client.html">← Retour à mes commandes</a></p>
-  <main>
+  <main id="contenu">
     <h1>Modifier une commande en attente</h1>
     <p id="message" role="status" aria-live="polite">Chargement de la commande…</p>
     <form id="edit" hidden>
@@ -30,7 +34,7 @@
       <label>Adresse de livraison <input name="lieu_livraison" type="text" maxlength="255" required autocomplete="street-address"></label>
       <label>Ville de livraison <input name="ville_livraison" type="text" value="Bordeaux" maxlength="100" required></label>
       <label>Nombre de personnes <input name="nombre_personnes" type="number" min="1" max="10000" step="1" required></label>
-      <p>Livraison à Bordeaux uniquement pour le moment. Le tarif final est recalculé par le serveur après validation.</p>
+      <p>Livraison offerte à Bordeaux. Hors Bordeaux : 5 € + 0,59 €/km, calculés par le serveur.</p>
       <button type="submit">Enregistrer les modifications</button>
     </form>
   </main>
@@ -62,6 +66,7 @@
         form.elements.date_prestation.value = order.date_prestation;
         form.elements.heure_livraison.value = String(order.heure_livraison).slice(0, 5);
         form.elements.lieu_livraison.value = order.lieu_livraison;
+        form.elements.ville_livraison.value = order.ville_livraison || 'Bordeaux';
         form.elements.nombre_personnes.value = order.nombre_personnes;
         form.hidden = false;
         notify('Modifiez les champs souhaités puis enregistrez.');
@@ -77,7 +82,7 @@
           method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
           body: JSON.stringify({ commande_id: Number(id), date_prestation: fields.get('date_prestation'), heure_livraison: fields.get('heure_livraison'), lieu_livraison: fields.get('lieu_livraison'), ville_livraison: fields.get('ville_livraison'), nombre_personnes: Number(fields.get('nombre_personnes')) })
         });
-        notify(`Commande n° ${result.commande_id} modifiée. Nouveau prix : ${result.prix_total} €.`);
+        notify(`Commande n° ${result.commande_id} modifiée. Nouveau prix : ${result.prix_total} €, dont ${result.frais_livraison} € de livraison.`);
         form.hidden = true;
       } catch (error) {
         notify(error.message, true);

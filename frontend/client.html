@@ -19,11 +19,16 @@
     .muted { color: #526558; }
     .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 1rem; }
     .cards article { margin: 0; }
+    :focus-visible { outline: 3px solid #8a5300; outline-offset: 3px; }
+    .skip-link { position: absolute; left: .5rem; top: -5rem; padding: .7rem 1rem; background: white; z-index: 2; }
+    .skip-link:focus { top: .5rem; }
     [hidden] { display: none !important; }
   </style>
 </head>
 <body>
-  <header><h1>Vite & Gourmand · Espace client</h1><button id="logout" type="button" class="secondary" hidden>Déconnexion</button></header>
+  <a class="skip-link" href="#contenu">Aller au contenu</a>
+  <header><h1>Vite & Gourmand · Espace client</h1><div class="actions"><a href="profil.html">Mes informations</a><button id="logout" type="button" class="secondary" hidden>Déconnexion</button></div></header>
+  <main id="contenu">
   <p id="message" role="status" aria-live="polite"></p>
   <section id="login-panel" hidden>
     <h2>Connexion</h2>
@@ -32,12 +37,14 @@
       <label>Mot de passe <input type="password" name="mot_de_passe" autocomplete="current-password" required></label>
       <button type="submit">Se connecter</button>
     </form>
+    <p><a href="mot-de-passe-oublie.html">Mot de passe oublié ?</a></p>
     <p class="muted">Pas encore de compte ? <a href="inscription.html">Créer un compte</a>.</p>
   </section>
-  <main id="client-panel" hidden>
+  <div id="client-panel" hidden>
     <section>
       <h2>Passer une commande</h2>
-      <p class="muted">Les demandes sont soumises à validation par le personnel. Livraison à Bordeaux uniquement pour le moment ; aucun tarif hors Bordeaux ne sera estimé sans distance vérifiable.</p>
+      <p class="muted">Les demandes sont soumises à validation par le personnel. À Bordeaux la livraison est offerte ; hors Bordeaux, le serveur calcule 5 € + 0,59 €/km selon l’itinéraire.</p>
+      <div id="customer-summary" class="muted" aria-live="polite"></div>
       <form id="order-form">
         <label>Menu <select id="menu" name="menu_id" required><option value="">Chargement des menus…</option></select></label>
         <p id="menu-details" class="muted" aria-live="polite"></p>
@@ -55,6 +62,7 @@
       <p class="muted">Une demande peut être annulée uniquement tant qu'elle est en attente. Une commande annulée reste consultable dans cette liste et dans son historique de suivi.</p>
       <div id="orders" class="cards"></div>
     </section>
+  </div>
   </main>
   <script>
     'use strict';
@@ -89,7 +97,7 @@
       if (!Number.isInteger(people) || people < minimum || minimum < 1) { output.textContent = `Saisissez au moins ${minimum} personnes.`; return; }
       const base = Math.round(Number(menu.prix) * people / minimum * 100) / 100;
       const discount = people >= minimum + 5 ? Math.round(base * 10) / 100 : 0;
-      output.textContent = `Estimation indicative : ${money(base - discount)} (remise : ${money(discount)}, livraison Bordeaux : 0 €). Le serveur confirme le tarif à la commande.`;
+      output.textContent = `Estimation du menu : ${money(base - discount)} (remise : ${money(discount)}). Les éventuels frais hors Bordeaux sont calculés et confirmés par le serveur.`;
     }
     async function loadMenus() {
       const data = await request('menu.php');
@@ -100,6 +108,12 @@
         if (!menu.disponible || Number(menu.stock) < 1 || Number(menu.nombre_personnes_min) < 1) continue;
         const option = document.createElement('option'); option.value = String(menu.menu_id); option.textContent = `${menu.titre} — ${money(Number(menu.prix))}`; select.append(option);
       }
+      const requestedMenu = new URLSearchParams(location.search).get('menu_id');
+      if (requestedMenu && Array.from(select.options).some(option => option.value === requestedMenu)) {
+        select.value = requestedMenu;
+        const menu = selectedMenu();
+        if (menu) byId('people').value = String(menu.nombre_personnes_min);
+      }
       estimate();
     }
     function field(parent, label, value) {
@@ -109,7 +123,8 @@
       parent.append(p);
     }
     async function loadOrders() {
-      const data = await request('mes_commandes.php');
+      const [data, reviewsData] = await Promise.all([request('mes_commandes.php'), request('avis_client.php')]);
+      const reviewedOrders = new Set((reviewsData.avis || []).map(review => String(review.commande_id)));
       const container = byId('orders'); container.replaceChildren();
       if (!Array.isArray(data.commandes) || !data.commandes.length) { const p = document.createElement('p'); p.textContent = 'Vous n’avez pas encore de commande.'; container.append(p); return; }
       for (const order of data.commandes) {
@@ -118,6 +133,9 @@
         field(card, 'Menu', order.menu_titre);
         field(card, 'Prestation', `${order.date_prestation} à ${order.heure_livraison}`);
         field(card, 'Adresse', order.lieu_livraison);
+        field(card, 'Ville', order.ville_livraison);
+        field(card, 'Distance', `${order.distance_km || 0} km`);
+        field(card, 'Frais de livraison', `${order.frais_livraison || '0.00'} €`);
         field(card, 'Convives', order.nombre_personnes);
         field(card, 'Prix', `${order.prix_total} €`);
         field(card, 'Statut', order.statut);
@@ -144,6 +162,7 @@
         });
         card.append(historyButton, history);
         if (order.statut === 'en attente') {
+          const editLink = document.createElement('a'); editLink.href = `modifier-commande.html?commande_id=${encodeURIComponent(order.commande_id)}`; editLink.textContent = 'Modifier cette demande'; card.append(editLink);
           const cancelButton = document.createElement('button'); cancelButton.type = 'button'; cancelButton.textContent = 'Annuler cette demande';
           cancelButton.addEventListener('click', async () => {
             if (!window.confirm(`Annuler définitivement la commande n° ${order.commande_id} ? Elle restera consultable dans votre historique.`)) return;
@@ -160,6 +179,25 @@
           });
           card.append(cancelButton);
         }
+        if (order.statut === 'terminée' && !reviewedOrders.has(String(order.commande_id))) {
+          const reviewForm = document.createElement('form');
+          const noteLabel = document.createElement('label'); noteLabel.textContent = 'Note sur 5';
+          const note = document.createElement('select'); note.required = true;
+          for (let value = 5; value >= 1; value -= 1) { const option = document.createElement('option'); option.value = String(value); option.textContent = `${value} / 5`; note.append(option); }
+          noteLabel.append(note);
+          const commentLabel = document.createElement('label'); commentLabel.textContent = 'Votre commentaire';
+          const comment = document.createElement('textarea'); comment.required = true; comment.minLength = 3; comment.maxLength = 2000; commentLabel.append(comment);
+          const submit = document.createElement('button'); submit.type = 'submit'; submit.textContent = 'Envoyer mon avis';
+          reviewForm.append(noteLabel, commentLabel, submit);
+          reviewForm.addEventListener('submit', async event => {
+            event.preventDefault(); submit.disabled = true;
+            try {
+              await request('avis_client.php', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken || '' }, body: JSON.stringify({ commande_id: Number(order.commande_id), note: Number(note.value), commentaire: comment.value }) });
+              await loadOrders(); notify('Votre avis a été envoyé pour modération.');
+            } catch (error) { notify(error.message, true); submit.disabled = false; }
+          });
+          card.append(reviewForm);
+        }
         container.append(card);
       }
     }
@@ -174,7 +212,11 @@
       if (data.utilisateur?.role !== 'utilisateur' || typeof data.csrf_token !== 'string') throw new Error('Cet espace est réservé aux clients.');
       csrfToken = data.csrf_token;
       showClient(true);
-      await Promise.all([loadMenus(), loadOrders()]);
+      const [, , profileData] = await Promise.all([loadMenus(), loadOrders(), request('profil.php')]);
+      const addressField = byId('order-form').elements.lieu_livraison;
+      if (!addressField.value && profileData.profil?.adresse) addressField.value = profileData.profil.adresse;
+      const profile = profileData.profil || {};
+      byId('customer-summary').textContent = `Commande pour ${profile.prenom || ''} ${profile.nom || ''} · ${profile.email || ''} · ${profile.telephone || 'téléphone non renseigné'}`;
     }
     byId('login-form').addEventListener('submit', async event => {
       event.preventDefault(); const formElement = event.currentTarget; const button = formElement.querySelector('button'); button.disabled = true;
@@ -196,9 +238,9 @@
       try {
         if (!csrfToken) throw new Error('Reconnectez-vous avant de commander.');
         const result = await request('creer_commande.php', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken }, body: JSON.stringify(payload) });
-        event.currentTarget.reset(); byId('menu').value = ''; estimate();
+        byId('order-form').reset(); byId('menu').value = ''; estimate();
         await Promise.all([loadMenus(), loadOrders()]);
-        notify(`Demande n° ${result.commande_id} enregistrée : ${result.prix_total} € — ${result.statut}.`);
+        notify(`Demande n° ${result.commande_id} enregistrée : ${result.prix_total} € (livraison ${result.frais_livraison} €) — ${result.statut}.`);
       } catch (error) { notify(error.message, true); } finally { button.disabled = false; }
     });
     byId('refresh').addEventListener('click', async () => {
