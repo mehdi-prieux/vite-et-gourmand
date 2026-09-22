@@ -39,7 +39,28 @@
   </section>
   <section id="dashboard" hidden>
     <div class="actions"><h2>Commandes</h2><button id="refresh" type="button" class="secondary">Actualiser</button></div>
-    <p class="muted">Jusqu'à 200 commandes sont affichées. Les changements de statut sont enregistrés dans l'historique. Une commande annulée ne peut plus changer de statut.</p>
+    <form id="filters" role="search">
+      <label for="status-filter">Statut
+        <select id="status-filter" name="statut">
+          <option value="">Tous les statuts</option>
+          <option value="en attente">En attente</option>
+          <option value="accepté">Accepté</option>
+          <option value="en préparation">En préparation</option>
+          <option value="en cours de livraison">En cours de livraison</option>
+          <option value="livré">Livré</option>
+          <option value="en attente du retour matériel">En attente du retour matériel</option>
+          <option value="terminée">Terminée</option>
+          <option value="annulée">Annulée</option>
+        </select>
+      </label>
+      <label for="client-filter">Client (nom, prénom ou e-mail)
+        <input id="client-filter" name="client" type="search" maxlength="100" placeholder="Rechercher un client">
+      </label>
+      <button type="submit">Filtrer les commandes</button>
+      <button id="reset-filters" type="button" class="secondary">Effacer les filtres</button>
+    </form>
+    <p id="results-count" role="status" aria-live="polite"></p>
+    <p class="muted">Jusqu'à 200 commandes correspondent aux filtres affichés. Les changements de statut sont enregistrés dans l'historique. Une commande annulée ne peut plus changer de statut.</p>
     <div id="orders" class="orders"></div>
   </section>
   <script>
@@ -80,7 +101,8 @@
     }
     function render(orders) {
       const container = byId('orders'); container.replaceChildren();
-      if (!orders.length) { const p = document.createElement('p'); p.textContent = 'Aucune commande.'; container.append(p); return; }
+      byId('results-count').textContent = `${orders.length} commande(s) affichée(s).`;
+      if (!orders.length) { const p = document.createElement('p'); p.textContent = 'Aucune commande ne correspond aux filtres.'; container.append(p); return; }
       for (const order of orders) {
         const card = document.createElement('article');
         const title = document.createElement('h3'); title.textContent = `Commande n° ${order.commande_id}`;
@@ -119,9 +141,23 @@
       }
     }
     async function loadOrders() {
-      const data = await request('commandes_employe.php');
+      const params = new URLSearchParams();
+      const status = byId('status-filter').value;
+      const client = byId('client-filter').value.trim();
+      if (status) params.set('statut', status);
+      if (client) params.set('client', client);
+      const query = params.toString();
+      const data = await request('commandes_employe.php' + (query ? '?' + query : ''));
       render(Array.isArray(data.commandes) ? data.commandes : []);
     }
+    byId('filters').addEventListener('submit', async event => {
+      event.preventDefault();
+      try { await loadOrders(); notify('Filtres appliqués.'); } catch (error) { notify(error.message, true); }
+    });
+    byId('reset-filters').addEventListener('click', async () => {
+      byId('filters').reset();
+      try { await loadOrders(); notify('Filtres effacés.'); } catch (error) { notify(error.message, true); }
+    });
     byId('login-form').addEventListener('submit', async event => {
       event.preventDefault();
       const button = event.currentTarget.querySelector('button'); button.disabled = true;
@@ -146,7 +182,7 @@
     byId('logout').addEventListener('click', async () => {
       try {
         await request('deconnexion.php', { method: 'POST', headers: { 'X-CSRF-Token': csrfToken || '' } });
-        csrfToken = null; byId('orders').replaceChildren(); showDashboard(false); notify('Déconnexion réussie.');
+        csrfToken = null; byId('orders').replaceChildren(); byId('filters').reset(); byId('results-count').textContent = ''; showDashboard(false); notify('Déconnexion réussie.');
       } catch (error) { notify(error.message, true); }
     });
     async function restoreSession() {
