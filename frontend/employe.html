@@ -23,6 +23,8 @@
     .orders dl { display: grid; grid-template-columns: auto 1fr; gap: .35rem .8rem; }
     dt { font-weight: 650; }
     dd { margin: 0; overflow-wrap: anywhere; }
+    .history { padding-left: 1.4rem; }
+    .history li { margin: .5rem 0; }
   </style>
 </head>
 <body>
@@ -117,6 +119,43 @@
         detail(details, 'Prix total', `${order.prix_total} €`);
         detail(details, 'Statut', order.statut);
         card.append(title, details);
+        const historyButton = document.createElement('button');
+        historyButton.type = 'button'; historyButton.className = 'secondary'; historyButton.textContent = 'Voir l’historique';
+        historyButton.setAttribute('aria-expanded', 'false');
+        const historyPanel = document.createElement('div'); historyPanel.hidden = true;
+        historyButton.addEventListener('click', async () => {
+          if (!historyPanel.hidden) {
+            historyPanel.hidden = true;
+            historyButton.setAttribute('aria-expanded', 'false');
+            historyButton.textContent = 'Voir l’historique';
+            return;
+          }
+          historyButton.disabled = true;
+          try {
+            const data = await request('suivi_commande.php?commande_id=' + encodeURIComponent(order.commande_id));
+            historyPanel.replaceChildren();
+            const heading = document.createElement('h4'); heading.textContent = 'Historique des statuts';
+            historyPanel.append(heading);
+            if (!Array.isArray(data.historique) || !data.historique.length) {
+              const empty = document.createElement('p'); empty.textContent = 'Aucun changement de statut enregistré.';
+              historyPanel.append(empty);
+            } else {
+              const list = document.createElement('ol'); list.className = 'history';
+              for (const entry of data.historique) {
+                const item = document.createElement('li');
+                const previous = entry.ancien_statut || 'Création';
+                item.textContent = `${entry.date_modification} : ${previous} → ${entry.nouveau_statut}`;
+                list.append(item);
+              }
+              historyPanel.append(list);
+            }
+            historyPanel.hidden = false;
+            historyButton.setAttribute('aria-expanded', 'true');
+            historyButton.textContent = 'Masquer l’historique';
+          } catch (error) { notify(error.message, true); }
+          finally { historyButton.disabled = false; }
+        });
+        card.append(historyButton, historyPanel);
         const next = transitions[order.statut] || [];
         if (next.length) {
           const form = document.createElement('form');
