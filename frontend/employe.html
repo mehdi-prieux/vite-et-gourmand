@@ -26,9 +26,9 @@
   </style>
 </head>
 <body>
-  <header><h1>Vite & Gourmand · Espace personnel</h1><button id="logout" class="secondary" hidden>Déconnexion</button></header>
+  <header><h1>Vite & Gourmand · Espace personnel</h1><button id="logout" type="button" class="secondary" hidden>Déconnexion</button></header>
   <p id="message" role="status" aria-live="polite"></p>
-  <section id="login-panel">
+  <section id="login-panel" hidden>
     <h2>Connexion du personnel</h2>
     <form id="login-form">
       <label>Adresse e-mail <input name="email" type="email" autocomplete="username" required></label>
@@ -39,7 +39,7 @@
   </section>
   <section id="dashboard" hidden>
     <div class="actions"><h2>Commandes</h2><button id="refresh" type="button" class="secondary">Actualiser</button></div>
-    <p class="muted">Jusqu'à 200 commandes sont affichées. Les changements de statut sont enregistrés dans l'historique.</p>
+    <p class="muted">Jusqu'à 200 commandes sont affichées. Les changements de statut sont enregistrés dans l'historique. Une commande annulée ne peut plus changer de statut.</p>
     <div id="orders" class="orders"></div>
   </section>
   <script>
@@ -52,7 +52,8 @@
       'en cours de livraison': ['livré'],
       'livré': ['en attente du retour matériel', 'terminée'],
       'en attente du retour matériel': ['terminée'],
-      'terminée': []
+      'terminée': [],
+      'annulée': []
     };
     let csrfToken = null;
     const byId = id => document.getElementById(id);
@@ -64,7 +65,7 @@
       const response = await fetch(api + endpoint, { credentials: 'same-origin', cache: 'no-store', ...options });
       let data;
       try { data = await response.json(); } catch { throw new Error('Réponse serveur illisible.'); }
-      if (!response.ok) throw new Error(data.erreur || 'Une erreur est survenue.');
+      if (!response.ok) { const error = new Error(data.erreur || 'Une erreur est survenue.'); error.status = response.status; throw error; }
       return data;
     }
     function showDashboard(visible) {
@@ -148,6 +149,25 @@
         csrfToken = null; byId('orders').replaceChildren(); showDashboard(false); notify('Déconnexion réussie.');
       } catch (error) { notify(error.message, true); }
     });
+    async function restoreSession() {
+      try {
+        const data = await request('session_courante.php');
+        if (!['employe', 'administrateur'].includes(data.utilisateur?.role)) {
+          showDashboard(false);
+          notify('Cet espace est réservé au personnel.', true);
+          return;
+        }
+        csrfToken = data.csrf_token;
+        showDashboard(true);
+        await loadOrders();
+      } catch (error) {
+        if (error.status === 401) { csrfToken = null; showDashboard(false); return; }
+        if (error.status === 403) { csrfToken = null; showDashboard(false); notify(error.message, true); return; }
+        notify(error.message, true);
+        showDashboard(false);
+      }
+    }
+    restoreSession();
   </script>
 </body>
 </html>
