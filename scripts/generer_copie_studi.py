@@ -10,7 +10,9 @@ from docx.oxml.ns import qn
 
 
 ROOT = Path(__file__).resolve().parents[1]
-OUTPUT = ROOT / "output" / "copie_studi_vite_et_gourmand.docx"
+NOM_FICHIER = os.getenv("STUDI_NOM", "NOM").upper()
+PRENOM_FICHIER = os.getenv("STUDI_PRENOM", "Prenom")
+OUTPUT = ROOT / "output" / f"ECF_TPDeveloppeurWebEtWebMobile_copiearendre_{NOM_FICHIER}_{PRENOM_FICHIER}.docx"
 
 
 def add_question(doc, title, answer):
