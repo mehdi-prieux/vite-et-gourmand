@@ -4,7 +4,7 @@
 
 Le besoin a été découpé par parcours : visiteur, client, employé et administrateur. Chaque fonctionnalité suit le flux `à faire -> en cours -> recette -> terminé`. Les anomalies sont enregistrées dans le compte rendu de tests avec leur impact et la preuve de correction. Aucun ticket Jira, Notion ou Trello antérieur n'est inventé dans ce document.
 
-Au 22 septembre, le dépôt est public : <https://github.com/mehdi-prieux/vite-et-gourmand>. La branche de travail historique est `fix/database-config-env` ; d'autres branches de fonctionnalité existent. Les corrections locales ont été regroupées en commits thématiques pour la remise urgente. La PR n°2 reste ouverte et non fusionnée. Le suivi public de livraison est [GitHub Issues](https://github.com/mehdi-prieux/vite-et-gourmand/issues) ; aucun historique antérieur de tableau n'est revendiqué.
+Au 22 septembre, le dépôt est public : <https://github.com/mehdi-prieux/vite-et-gourmand>. La [version de livraison](https://github.com/mehdi-prieux/vite-et-gourmand/tree/livraison-studi) et `develop` ont été publiées sans réécrire l'historique ; `main` reste inchangée. La branche de travail historique est `fix/database-config-env`. La PR n°2 reste ouverte et non fusionnée. Le suivi public de livraison est [GitHub Issues](https://github.com/mehdi-prieux/vite-et-gourmand/issues) ; aucun historique antérieur de tableau n'est revendiqué.
 
 ## Backlog traçable au 22 septembre 2026
 
