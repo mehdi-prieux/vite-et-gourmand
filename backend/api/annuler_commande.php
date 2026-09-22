@@ -75,20 +75,23 @@ try {
         sendJsonResponse(['erreur' => 'Seule une commande en attente peut être annulée.'], 409);
         exit;
     }
-    // L'annulation supprime la demande non acceptée : le schéma ne possède pas
-    // de statut « annulée ». L'opération et la restitution du stock sont atomiques.
-    $delete = $pdo->prepare('DELETE FROM commande WHERE commande_id = :id AND utilisateur_id = :utilisateur_id AND statut = :statut');
-    $delete->execute(['id' => $commandeId, 'utilisateur_id' => $utilisateurId, 'statut' => 'en attente']);
-    if ($delete->rowCount() !== 1) {
+
+    // Conserver la commande et ses références ; l'historique et le stock
+    // sont modifiés dans la même transaction que le changement de statut.
+    $update = $pdo->prepare("UPDATE commande SET statut = 'annulée' WHERE commande_id = :id AND utilisateur_id = :utilisateur_id AND statut = 'en attente'");
+    $update->execute(['id' => $commandeId, 'utilisateur_id' => $utilisateurId]);
+    if ($update->rowCount() !== 1) {
         throw new RuntimeException('La commande a changé pendant son annulation.');
     }
+    $history = $pdo->prepare('INSERT INTO suivi_commande (commande_id, ancien_statut, nouveau_statut) VALUES (:id, :ancien, :nouveau)');
+    $history->execute(['id' => $commandeId, 'ancien' => 'en attente', 'nouveau' => 'annulée']);
     $restore = $pdo->prepare('UPDATE menu SET stock = stock + 1 WHERE menu_id = :id');
     $restore->execute(['id' => $commande['menu_id']]);
     if ($restore->rowCount() !== 1) {
         throw new RuntimeException('Impossible de restituer le stock.');
     }
     $pdo->commit();
-    sendJsonResponse(['message' => 'Commande en attente annulée. Le stock a été restitué.', 'commande_id' => $commandeId]);
+    sendJsonResponse(['message' => 'Commande annulée et historisée. Le stock a été restitué.', 'commande_id' => $commandeId, 'statut' => 'annulée']);
 } catch (Throwable $e) {
     if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) {
         $pdo->rollBack();
