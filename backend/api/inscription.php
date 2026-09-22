@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/_response.php';
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
     header('Allow: POST');
     sendJsonResponse(['erreur' => 'Méthode non autorisée.'], 405);
     exit;
@@ -28,7 +28,7 @@ try {
     exit;
 }
 
-if (!is_array($input)) {
+if (!is_array($input) || array_is_list($input)) {
     sendJsonResponse(['erreur' => 'Un objet JSON est attendu.'], 400);
     exit;
 }
@@ -55,8 +55,12 @@ if (!filter_var($values['email'], FILTER_VALIDATE_EMAIL)) {
 }
 
 $password = $input['mot_de_passe'] ?? null;
-if (!is_string($password) || strlen($password) < 12 || strlen($password) > 72) {
-    sendJsonResponse(['erreur' => 'Le mot de passe doit contenir entre 12 et 72 octets.'], 422);
+if (!is_string($password) || strlen($password) < 12 || strlen($password) > 72
+    || !preg_match('/[A-Z]/', $password)
+    || !preg_match('/[a-z]/', $password)
+    || !preg_match('/[0-9]/', $password)
+    || !preg_match('/[^A-Za-z0-9]/', $password)) {
+    sendJsonResponse(['erreur' => 'Le mot de passe doit contenir entre 12 et 72 octets, avec au moins une majuscule, une minuscule, un chiffre et un caractère spécial.'], 422);
     exit;
 }
 
