@@ -25,14 +25,14 @@
 <body>
   <header><h1>Vite & Gourmand · Espace client</h1><button id="logout" type="button" class="secondary" hidden>Déconnexion</button></header>
   <p id="message" role="status" aria-live="polite"></p>
-  <section id="login-panel">
+  <section id="login-panel" hidden>
     <h2>Connexion</h2>
     <form id="login-form">
       <label>Adresse e-mail <input type="email" name="email" autocomplete="username" required></label>
       <label>Mot de passe <input type="password" name="mot_de_passe" autocomplete="current-password" required></label>
       <button type="submit">Se connecter</button>
     </form>
-    <p class="muted">Vous devez disposer d'un compte client pour commander.</p>
+    <p class="muted">Pas encore de compte ? <a href="inscription.html">Créer un compte</a>.</p>
   </section>
   <main id="client-panel" hidden>
     <section>
@@ -52,6 +52,7 @@
     </section>
     <section>
       <div class="actions"><h2>Mes commandes</h2><button id="refresh" type="button" class="secondary">Actualiser</button></div>
+      <p class="muted">Une demande peut être annulée uniquement tant qu'elle est en attente. L'annulation supprime actuellement la demande de la liste.</p>
       <div id="orders" class="cards"></div>
     </section>
   </main>
@@ -67,7 +68,7 @@
       const response = await fetch(api + endpoint, { credentials: 'same-origin', cache: 'no-store', ...options });
       let data;
       try { data = await response.json(); } catch { throw new Error('Réponse serveur illisible.'); }
-      if (!response.ok) throw new Error(data.erreur || data.error || 'Une erreur est survenue.');
+      if (!response.ok) { const error = new Error(data.erreur || data.error || 'Une erreur est survenue.'); error.status = response.status; throw error; }
       return data;
     }
     function showClient(visible) {
@@ -141,7 +142,25 @@
             history.hidden = false;
           } catch (error) { notify(error.message, true); } finally { historyButton.disabled = false; }
         });
-        card.append(historyButton, history); container.append(card);
+        card.append(historyButton, history);
+        if (order.statut === 'en attente') {
+          const cancelButton = document.createElement('button'); cancelButton.type = 'button'; cancelButton.textContent = 'Annuler cette demande';
+          cancelButton.addEventListener('click', async () => {
+            if (!window.confirm(`Annuler la commande n° ${order.commande_id} ? Cette action est irréversible et la demande sera supprimée.`)) return;
+            cancelButton.disabled = true;
+            try {
+              if (!csrfToken) throw new Error('Reconnectez-vous avant d’annuler.');
+              await request('annuler_commande.php', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken }, body: JSON.stringify({ commande_id: Number(order.commande_id) }) });
+              await Promise.all([loadOrders(), loadMenus()]);
+              notify(`Commande n° ${order.commande_id} annulée. Le stock du menu a été restitué.`);
+            } catch (error) {
+              notify(error.message, true);
+              if (error.status === 409 || error.status === 404) { try { await loadOrders(); } catch (refreshError) { notify(refreshError.message, true); } }
+            } finally { cancelButton.disabled = false; }
+          });
+          card.append(cancelButton);
+        }
+        container.append(card);
       }
     }
     byId('menu').addEventListener('change', () => {
@@ -151,18 +170,22 @@
     });
     byId('people').addEventListener('input', estimate);
     byId('date').min = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+    async function enterClient(data) {
+      if (data.utilisateur?.role !== 'utilisateur' || typeof data.csrf_token !== 'string') throw new Error('Cet espace est réservé aux clients.');
+      csrfToken = data.csrf_token;
+      showClient(true);
+      await Promise.all([loadMenus(), loadOrders()]);
+    }
     byId('login-form').addEventListener('submit', async event => {
       event.preventDefault(); const formElement = event.currentTarget; const button = formElement.querySelector('button'); button.disabled = true;
       const form = new FormData(formElement);
       try {
         const data = await request('connexion.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: form.get('email'), mot_de_passe: form.get('mot_de_passe') }) });
-        csrfToken = data.csrf_token;
         if (data.utilisateur?.role !== 'utilisateur') {
-          await request('deconnexion.php', { method: 'POST', headers: { 'X-CSRF-Token': csrfToken } });
-          csrfToken = null; throw new Error('Cet espace est réservé aux clients.');
+          if (typeof data.csrf_token === 'string') await request('deconnexion.php', { method: 'POST', headers: { 'X-CSRF-Token': data.csrf_token } });
+          throw new Error('Cet espace est réservé aux clients.');
         }
-        showClient(true);
-        await Promise.all([loadMenus(), loadOrders()]);
+        await enterClient(data);
         formElement.reset(); notify('Connexion réussie.');
       } catch (error) { notify(error.message, true); } finally { button.disabled = false; }
     });
@@ -187,6 +210,16 @@
         csrfToken = null; menus = []; byId('orders').replaceChildren(); showClient(false); notify('Déconnexion réussie.');
       } catch (error) { notify(error.message, true); }
     });
+    (async () => {
+      try {
+        const data = await request('session_courante.php');
+        if (data.utilisateur?.role !== 'utilisateur') { showClient(false); notify('Cet espace est réservé aux clients.', true); return; }
+        await enterClient(data);
+      } catch (error) {
+        if (error.status === 401) { csrfToken = null; showClient(false); }
+        else { showClient(false); notify(error.message, true); }
+      }
+    })();
   </script>
 </body>
 </html>
