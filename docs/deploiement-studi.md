@@ -1,5 +1,11 @@
 # Préparation du déploiement Studi
 
+## Démonstration gratuite urgente : état et limites
+
+InfinityFree est un candidat gratuit pour PHP 8.3, MySQL/MariaDB, HTTPS et un sous-domaine sans carte bancaire. Aucun compte d'hébergement ni URL applicative n'a encore été fourni ; aucune recette hébergée n'est validée. L'offre impose une création de compte et une validation personnelles. Elle bloque `mail()` PHP et n'autorise pas les variables d'environnement usuelles : l'application peut lire un `backend/config/local.php` non versionné, à créer sur l'hébergement depuis `local.php.example`. Ne saisir les véritables identifiants MySQL que dans ce fichier privé, jamais dans Git ni dans la copie Studi. Ne déployer qu'une base de démonstration sans données réelles et avec les seuls comptes de démonstration destinés au jury.
+
+Parcours minimal une fois le compte créé : créer un sous-domaine gratuit, créer une base MySQL dédiée, importer une copie adaptée des SQL (remplacer `CREATE DATABASE`/`USE vite_gourmand` par la base attribuée par l'hébergeur), transférer les dossiers `frontend`, `backend` et les ressources nécessaires dans `htdocs`, puis configurer le site et ouvrir `https://<sous-domaine>/frontend/`. Tester d'abord la connexion MySQL et les sessions HTTPS, puis les parcours principaux avec une recette navigateur. Ne pas qualifier les e-mails ou les statistiques de validés : `mail()` est indisponible et la projection CouchDB actuelle est limitée à la destination locale de test approuvée. Aucun accès CouchDB distant ne doit être ajouté sans autorisation spécifique.
+
 ## Préconditions
 
 Choisir un hébergeur PHP avec HTTPS, une base MySQL/MariaDB et une instance CouchDB 3 accessible uniquement à l'application. Une URL publique de l'hébergeur suffit ; un domaine personnalisé n'est pas exigé. Disposer d'une adresse d'envoi d'e-mails, d'une adresse de contact et des coordonnées légales réelles à publier. Faire une sauvegarde de toute base existante avant migration. Ne jamais utiliser les comptes de démonstration en production.

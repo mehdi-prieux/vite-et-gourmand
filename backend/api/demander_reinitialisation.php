@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/../config/env.php';
+
 require_once __DIR__ . '/_response.php';
 header('Cache-Control: no-store');
 
@@ -30,7 +32,7 @@ try {
         $pdo->commit();
         try {
             require_once __DIR__ . '/../services/Mailer.php';
-            $base = rtrim(getenv('APP_BASE_URL') ?: 'http://localhost:8000/frontend', '/');
+            $base = rtrim(appConfig('APP_BASE_URL') ?: 'http://localhost:8000/frontend', '/');
             $link = $base . '/reinitialiser-mot-de-passe.html?token=' . rawurlencode($rawToken);
             sendApplicationMail($email, 'Réinitialisation de votre mot de passe', "Bonjour {$user['prenom']},\n\nCe lien est valable une heure et ne peut être utilisé qu’une fois :\n{$link}\n\nSi vous n’êtes pas à l’origine de cette demande, ignorez ce message.\n");
         } catch (Throwable $mailError) {

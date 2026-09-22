@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/../config/env.php';
+
 /** Documents de commandes stockés dans Apache CouchDB. Aucun accès SQL dans les lectures du graphique. */
 final class NoSqlStatistics
 {
@@ -12,16 +14,16 @@ final class NoSqlStatistics
 
     public function __construct()
     {
-        $url = getenv('COUCHDB_URL');
-        $database = getenv('COUCHDB_DATABASE');
-        $this->user = (string) (getenv('COUCHDB_USER') ?: '');
-        $this->password = (string) (getenv('COUCHDB_PASSWORD') ?: '');
+        $url = appConfig('COUCHDB_URL');
+        $database = appConfig('COUCHDB_DATABASE');
+        $this->user = (string) (appConfig('COUCHDB_USER') ?: '');
+        $this->password = (string) (appConfig('COUCHDB_PASSWORD') ?: '');
         if (!is_string($url) || $url === '' || !preg_match('#^https?://#', $url)
             || !is_string($database) || !preg_match('/^[a-z][a-z0-9_$()+-]*$/', $database)
             || $this->user === '' || $this->password === '') {
             throw new RuntimeException('Base NoSQL non configurée.');
         }
-        if (getenv('APP_ENV') === 'test' && !str_ends_with($database, '_test')) {
+        if (appConfig('APP_ENV') === 'test' && !str_ends_with($database, '_test')) {
             throw new RuntimeException('En test, la base NoSQL doit se terminer par _test.');
         }
         $host = parse_url($url, PHP_URL_HOST);
@@ -142,9 +144,9 @@ final class NoSqlStatistics
 function projectOrderToNoSql(PDO $pdo, int $orderId): void
 {
     // Destination et champs autorisés pour la recette locale uniquement.
-    if (getenv('APP_ENV') !== 'test'
-        || getenv('COUCHDB_URL') !== 'http://127.0.0.1:5984'
-        || getenv('COUCHDB_DATABASE') !== 'vite_gourmand_stats_test') return;
+    if (appConfig('APP_ENV') !== 'test'
+        || appConfig('COUCHDB_URL') !== 'http://127.0.0.1:5984'
+        || appConfig('COUCHDB_DATABASE') !== 'vite_gourmand_stats_test') return;
     try {
         if ($pdo->query('SELECT DATABASE()')->fetchColumn() !== 'vite_gourmand_test') {
             throw new RuntimeException('Projection refusée hors vite_gourmand_test.');

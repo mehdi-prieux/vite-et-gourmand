@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/env.php';
+
 function startSecureSession(): void
 {
     if (session_status() === PHP_SESSION_ACTIVE) {
@@ -13,7 +15,7 @@ function startSecureSession(): void
     }
 
     $https = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
-    if (getenv('APP_ENV') === 'production' && !$https) {
+    if (appConfig('APP_ENV') === 'production' && !$https) {
         throw new RuntimeException('HTTPS est obligatoire en production.');
     }
 

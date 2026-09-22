@@ -39,6 +39,8 @@ Pour essayer les statistiques NoSQL, préparer une instance CouchDB locale prot�
 
 Le code ne charge pas automatiquement un fichier `.env`. Les variables doivent être injectées par le terminal, le serveur web ou l’hébergeur.
 
+Si l'hébergeur gratuit ne permet pas de définir des variables d'environnement, copier `backend/config/local.php.example` vers `backend/config/local.php` **sur l'hébergement uniquement** et remplacer les exemples par les paramètres reçus. Ce fichier est ignoré par Git et son répertoire est fermé par `.htaccess` sous Apache. Les vraies variables d'environnement gardent la priorité sur ce fichier. Ne jamais envoyer `local.php` sur GitHub.
+
 ## Comptes de démonstration
 
 Après chargement de `database/mysql/insert_data.sql` :
@@ -94,4 +96,6 @@ tests/manual/         scénarios de contrôle complémentaires
 
 ## Déploiement
 
-Le déploiement public n’est pas effectué automatiquement. Avant publication : remplacer les contenus légaux provisoires, configurer l’e-mail et les services de distance, installer la base NoSQL attendue, appliquer les migrations sur une sauvegarde, supprimer les comptes de démonstration et rejouer la recette sur une base de préproduction isolée.
+Le déploiement public n’est pas effectué automatiquement. Avant une exploitation réelle : remplacer les contenus légaux provisoires, configurer l'e-mail et les services de distance, installer la base NoSQL attendue, appliquer les migrations sur une sauvegarde, supprimer les comptes de démonstration et rejouer la recette sur une base de préproduction isolée.
+
+Pour une **démonstration gratuite jetable**, une instance de type InfinityFree peut héberger PHP, MySQL et HTTPS avec sous-domaine gratuit, sous réserve de créer le compte, de vérifier les limites réelles et de n'y placer aucune donnée client réelle. Sa fonction `mail()` est désactivée : contact, notifications et réinitialisation par e-mail ne doivent pas être annoncés comme fonctionnels avant adaptation. L'intégration CouchDB n'est actuellement active que pour la base locale de test approuvée ; les statistiques ne seront donc pas disponibles sur cette démonstration. Voir `docs/deploiement-studi.md` pour les étapes et restrictions. Le dépôt public de version jury est la branche `livraison-studi` ; la PR n°2 reste non fusionnée.

@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/../config/env.php';
+
 require_once __DIR__ . '/_response.php';
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
@@ -40,7 +42,7 @@ if (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 150
 
 try {
     require_once __DIR__ . '/../services/Mailer.php';
-    $recipient = getenv('CONTACT_EMAIL') ?: '';
+    $recipient = appConfig('CONTACT_EMAIL') ?: '';
     if (!filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
         sendJsonResponse(['erreur' => 'Le service de contact n’est pas configuré.'], 503);
         exit;

@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/../config/env.php';
+
 require_once __DIR__ . '/_response.php';
 header('Cache-Control: no-store');
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
@@ -40,9 +42,9 @@ try {
         sendJsonResponse(['erreur' => 'Accès refusé.'], 403);
         exit;
     }
-    if (getenv('APP_ENV') !== 'test'
-        || getenv('COUCHDB_URL') !== 'http://127.0.0.1:5984'
-        || getenv('COUCHDB_DATABASE') !== 'vite_gourmand_stats_test'
+    if (appConfig('APP_ENV') !== 'test'
+        || appConfig('COUCHDB_URL') !== 'http://127.0.0.1:5984'
+        || appConfig('COUCHDB_DATABASE') !== 'vite_gourmand_stats_test'
         || $pdo->query('SELECT DATABASE()')->fetchColumn() !== 'vite_gourmand_test') {
         sendJsonResponse(['erreur' => 'Statistiques NoSQL indisponibles.'], 503);
         exit;

@@ -1,19 +1,21 @@
 <?php
 
+require_once __DIR__ . '/env.php';
+
 // Configuration fournie par l'environnement du serveur (voir .env.example).
 // Les valeurs par défaut sont limitées au développement local.
-$dbHost = getenv('DB_HOST') ?: 'localhost';
-$dbPort = getenv('DB_PORT') ?: '3306';
-$dbName = getenv('DB_NAME') ?: 'vite_gourmand';
-$dbUsername = getenv('DB_USER') ?: 'root';
-$dbPassword = getenv('DB_PASSWORD');
+$dbHost = appConfig('DB_HOST') ?: 'localhost';
+$dbPort = appConfig('DB_PORT') ?: '3306';
+$dbName = appConfig('DB_NAME') ?: 'vite_gourmand';
+$dbUsername = appConfig('DB_USER') ?: 'root';
+$dbPassword = appConfig('DB_PASSWORD');
 $dbPassword = $dbPassword === false ? '' : $dbPassword;
 
-if (getenv('APP_ENV') === 'test' && $dbName !== 'vite_gourmand_test') {
+if (appConfig('APP_ENV') === 'test' && $dbName !== 'vite_gourmand_test') {
     throw new RuntimeException('En test, seule la base vite_gourmand_test est autorisée.');
 }
-if (getenv('APP_ENV') === 'production'
-    && (getenv('DB_NAME') === false || getenv('DB_USER') === false || getenv('DB_PASSWORD') === false)) {
+if (appConfig('APP_ENV') === 'production'
+    && (appConfig('DB_NAME') === false || appConfig('DB_USER') === false || appConfig('DB_PASSWORD') === false)) {
     throw new RuntimeException('La configuration MySQL explicite est requise en production.');
 }
 

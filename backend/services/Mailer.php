@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/../config/env.php';
+
 /**
  * Envoie un message applicatif. En test, MAIL_TRANSPORT=log écrit un journal
  * local dédié ; en production, la fonction mail() est utilisée.
@@ -12,15 +14,15 @@ function sendApplicationMail(string $to, string $subject, string $text): bool
         throw new InvalidArgumentException('Destinataire ou objet de message invalide.');
     }
 
-    $transport = getenv('MAIL_TRANSPORT') ?: 'mail';
+    $transport = appConfig('MAIL_TRANSPORT') ?: 'mail';
     if (!in_array($transport, ['mail', 'log'], true)) {
         throw new RuntimeException('MAIL_TRANSPORT invalide.');
     }
     if ($transport === 'log') {
-        if (getenv('APP_ENV') !== 'test') {
+        if (appConfig('APP_ENV') !== 'test') {
             throw new RuntimeException('Le transport de test est interdit hors APP_ENV=test.');
         }
-        $path = getenv('MAIL_LOG_PATH');
+        $path = appConfig('MAIL_LOG_PATH');
         if (!is_string($path) || $path === '') {
             throw new RuntimeException('MAIL_LOG_PATH est requis avec MAIL_TRANSPORT=log.');
         }
@@ -31,8 +33,8 @@ function sendApplicationMail(string $to, string $subject, string $text): bool
         return file_put_contents($path, $entry, FILE_APPEND | LOCK_EX) !== false;
     }
 
-    $from = getenv('MAIL_FROM');
-    if ($from === false && getenv('APP_ENV') === 'production') {
+    $from = appConfig('MAIL_FROM');
+    if ($from === false && appConfig('APP_ENV') === 'production') {
         throw new RuntimeException('MAIL_FROM est requis en production.');
     }
     $from = $from ?: 'no-reply@vite-gourmand.local';
