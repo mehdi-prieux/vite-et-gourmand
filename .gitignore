@@ -1,0 +1,20 @@
+# Configuration locale
+.env
+
+# Logs
+*.log
+
+# Cache
+/cache/
+/tmp/
+
+# Système
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Fichiers sensibles
+backend/config/local.php
