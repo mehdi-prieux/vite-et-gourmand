@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/_response.php';
 header('Cache-Control: no-store');
-
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
     header('Allow: POST');
     sendJsonResponse(['erreur' => 'Méthode non autorisée.'], 405);
@@ -32,6 +31,7 @@ if (!is_array($input) || array_is_list($input)) {
 $commandeId = filter_var($input['commande_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
 $nouveauStatut = $input['statut'] ?? null;
 $transitions = [
+    'en attente' => ['accepté'],
     'accepté' => ['en préparation'],
     'en préparation' => ['en cours de livraison'],
     'en cours de livraison' => ['livré'],
@@ -43,7 +43,6 @@ if ($commandeId === false || !is_string($nouveauStatut) || !array_key_exists($no
     sendJsonResponse(['erreur' => 'Commande ou statut invalide.'], 422);
     exit;
 }
-
 try {
     require_once __DIR__ . '/../config/session.php';
     startSecureSession();
@@ -61,7 +60,6 @@ try {
         sendJsonResponse(['erreur' => 'Jeton CSRF invalide.'], 403);
         exit;
     }
-
     require_once __DIR__ . '/../config/database.php';
     $pdo->beginTransaction();
     $staff = $pdo->prepare('SELECT actif, role FROM utilisateur WHERE utilisateur_id = :id FOR UPDATE');
@@ -87,22 +85,10 @@ try {
     }
     $update = $pdo->prepare('UPDATE commande SET statut = :statut WHERE commande_id = :id');
     $update->execute(['statut' => $nouveauStatut, 'id' => $commandeId]);
-    $history = $pdo->prepare(
-        'INSERT INTO suivi_commande (commande_id, ancien_statut, nouveau_statut)
-         VALUES (:commande_id, :ancien_statut, :nouveau_statut)'
-    );
-    $history->execute([
-        'commande_id' => $commandeId,
-        'ancien_statut' => $ancienStatut,
-        'nouveau_statut' => $nouveauStatut,
-    ]);
+    $history = $pdo->prepare('INSERT INTO suivi_commande (commande_id, ancien_statut, nouveau_statut) VALUES (:commande_id, :ancien_statut, :nouveau_statut)');
+    $history->execute(['commande_id' => $commandeId, 'ancien_statut' => $ancienStatut, 'nouveau_statut' => $nouveauStatut]);
     $pdo->commit();
-    sendJsonResponse([
-        'message' => 'Statut mis à jour.',
-        'commande_id' => $commandeId,
-        'ancien_statut' => $ancienStatut,
-        'nouveau_statut' => $nouveauStatut,
-    ]);
+    sendJsonResponse(['message' => 'Statut mis à jour.', 'commande_id' => $commandeId, 'ancien_statut' => $ancienStatut, 'nouveau_statut' => $nouveauStatut]);
 } catch (Throwable $e) {
     if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) {
         $pdo->rollBack();
