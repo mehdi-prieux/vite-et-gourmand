@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mon espace — Vite & Gourmand</title>
+  <style>
+    :root { font-family: system-ui, sans-serif; color: #203329; background: #f5f7f3; }
+    body { max-width: 850px; margin: auto; padding: 1.5rem; }
+    nav { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 1rem; }
+    nav a { display: block; padding: 1.5rem; background: #fff; border: 1px solid #d6dfd7; border-radius: .7rem; color: #245a3c; text-decoration: none; }
+    nav a:focus-visible, nav a:hover { outline: 3px solid #245a3c; outline-offset: 2px; }
+    nav strong { display: block; margin-bottom: .5rem; }
+    .muted { color: #526558; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Vite & Gourmand · Mon espace</h1>
+    <p>Choisissez l'action que vous souhaitez effectuer.</p>
+    <nav aria-label="Parcours client">
+      <a href="inscription.html"><strong>Créer un compte</strong>Renseigner mes coordonnées et choisir un mot de passe de 12 caractères minimum.</a>
+      <a href="client.html"><strong>Commander et suivre</strong>Me connecter, choisir un menu, passer commande et consulter son historique.</a>
+      <a href="annulation.html"><strong>Annuler une demande</strong>Annuler uniquement une commande encore en attente de validation.</a>
+    </nav>
+    <p class="muted">Les espaces de commande et d'annulation demandent chacun une connexion. Une demande déjà acceptée ne peut pas être annulée en ligne.</p>
+  </main>
+</body>
+</html>
