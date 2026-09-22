@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Créer un compte — Vite & Gourmand</title>
+  <style>
+    :root { font-family: system-ui, sans-serif; color: #203329; background: #f5f7f3; }
+    body { max-width: 700px; margin: 0 auto; padding: 1.5rem; }
+    main { background: #fff; border: 1px solid #d6dfd7; border-radius: .7rem; padding: 1.5rem; }
+    form, label { display: grid; gap: .5rem; }
+    form { gap: 1rem; }
+    input, button { font: inherit; padding: .6rem; border: 1px solid #819587; border-radius: .35rem; }
+    button { background: #245a3c; color: white; cursor: pointer; }
+    button:disabled { opacity: .55; cursor: not-allowed; }
+    .error { color: #9b2226; }
+    .muted { color: #526558; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Créer mon compte Vite & Gourmand</h1>
+    <p>Déjà inscrit ? <a href="client.html">Accéder à mon espace client</a>.</p>
+    <p id="message" role="status" aria-live="polite"></p>
+    <form id="registration">
+      <label>Nom <input name="nom" autocomplete="family-name" maxlength="100" required></label>
+      <label>Prénom <input name="prenom" autocomplete="given-name" maxlength="100" required></label>
+      <label>Adresse e-mail <input name="email" type="email" autocomplete="email" maxlength="150" required></label>
+      <label>Téléphone <input name="telephone" type="tel" autocomplete="tel" maxlength="20" required></label>
+      <label>Adresse postale <input name="adresse" autocomplete="street-address" maxlength="255" required></label>
+      <label>Mot de passe <input id="password" name="mot_de_passe" type="password" autocomplete="new-password" minlength="12" maxlength="72" aria-describedby="password-help" required></label>
+      <p id="password-help" class="muted">Au moins 12 caractères, avec une majuscule, une minuscule, un chiffre et un caractère spécial. Le serveur vérifie les règles de sécurité.</p>
+      <label>Confirmer le mot de passe <input id="confirmation" type="password" autocomplete="new-password" required></label>
+      <button type="submit">Créer mon compte</button>
+    </form>
+  </main>
+  <script>
+    'use strict';
+    const form = document.getElementById('registration');
+    const message = document.getElementById('message');
+    form.addEventListener('submit', async event => {
+      event.preventDefault();
+      message.textContent = '';
+      message.className = '';
+      const password = document.getElementById('password').value;
+      if (password !== document.getElementById('confirmation').value) {
+        message.textContent = 'Les deux mots de passe sont différents.';
+        message.className = 'error';
+        return;
+      }
+      const button = form.querySelector('button');
+      button.disabled = true;
+      const fields = new FormData(form);
+      const payload = Object.fromEntries(['nom', 'prenom', 'email', 'telephone', 'adresse', 'mot_de_passe'].map(name => [name, fields.get(name)]));
+      try {
+        const response = await fetch('../backend/api/inscription.php', {
+          method: 'POST', credentials: 'same-origin', cache: 'no-store',
+          headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+        });
+        let result;
+        try { result = await response.json(); } catch { throw new Error('Réponse serveur illisible.'); }
+        if (!response.ok) throw new Error(result.erreur || 'Création du compte impossible.');
+        form.reset();
+        message.textContent = 'Compte créé. Vous pouvez maintenant vous connecter dans votre espace client.';
+        const link = document.createElement('a'); link.href = 'client.html'; link.textContent = ' Se connecter';
+        message.append(link);
+      } catch (error) {
+        message.textContent = error.message;
+        message.className = 'error';
+      } finally { button.disabled = false; }
+    });
+  </script>
+</body>
+</html>
