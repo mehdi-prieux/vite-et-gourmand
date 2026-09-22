@@ -76,7 +76,8 @@ CREATE TABLE commande (
         'en cours de livraison',
         'livré',
         'en attente du retour matériel',
-        'terminée'
+        'terminée',
+        'annulée'
     ) NOT NULL DEFAULT 'en attente',
     prix_total DECIMAL(10,2),
     FOREIGN KEY(utilisateur_id) REFERENCES utilisateur(utilisateur_id),
