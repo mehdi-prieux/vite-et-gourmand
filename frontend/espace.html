@@ -12,6 +12,10 @@
     nav a:focus-visible, nav a:hover { outline: 3px solid #245a3c; outline-offset: 2px; }
     nav strong { display: block; margin-bottom: .5rem; }
     .muted { color: #526558; }
+    form { display: flex; flex-wrap: wrap; gap: .6rem; align-items: end; margin: 1.5rem 0; }
+    label { display: grid; gap: .3rem; }
+    input, button { font: inherit; padding: .55rem; border-radius: .35rem; border: 1px solid #819587; }
+    button { background: #245a3c; color: white; cursor: pointer; }
   </style>
 </head>
 <body>
@@ -23,7 +27,14 @@
       <a href="client.html"><strong>Commander et suivre</strong>Me connecter, choisir un menu, passer commande et consulter son historique, y compris les commandes annulées.</a>
       <a href="annulation.html"><strong>Annuler une demande</strong>Annuler uniquement une commande encore en attente de validation, sans effacer son historique.</a>
     </nav>
-    <p class="muted">Votre connexion est conservée entre ces pages tant que votre session est valide. Une demande déjà acceptée ne peut pas être annulée en ligne. Sur une base de données existante, la migration d'historisation des annulations doit être appliquée avant d'utiliser cette fonction.</p>
+    <form action="modifier-commande.html" method="get">
+      <label for="commande-id">Modifier une commande en attente : numéro de commande
+        <input id="commande-id" name="commande_id" type="number" min="1" step="1" required placeholder="Ex. : 12">
+      </label>
+      <button type="submit">Accéder à la modification</button>
+    </form>
+    <p class="muted">Retrouvez le numéro dans « Commander et suivre ». Le formulaire vérifie que la commande vous appartient et qu'elle est toujours en attente. Le menu ne peut pas être changé.</p>
+    <p class="muted">Votre connexion est conservée entre ces pages tant que votre session est valide. Une demande déjà acceptée ne peut pas être annulée ou modifiée en ligne. Sur une base de données existante, les migrations de statuts et d'historisation doivent être appliquées avant d'utiliser ces fonctions.</p>
   </main>
 </body>
 </html>
