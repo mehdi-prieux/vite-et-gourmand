@@ -2,18 +2,26 @@
 
 // Configuration fournie par l'environnement du serveur (voir .env.example).
 // Les valeurs par défaut sont limitées au développement local.
-$host = getenv('DB_HOST') ?: 'localhost';
-$port = getenv('DB_PORT') ?: '3306';
-$dbname = getenv('DB_NAME') ?: 'vite_gourmand';
-$username = getenv('DB_USER') ?: 'root';
-$password = getenv('DB_PASSWORD');
-$password = $password === false ? '' : $password;
+$dbHost = getenv('DB_HOST') ?: 'localhost';
+$dbPort = getenv('DB_PORT') ?: '3306';
+$dbName = getenv('DB_NAME') ?: 'vite_gourmand';
+$dbUsername = getenv('DB_USER') ?: 'root';
+$dbPassword = getenv('DB_PASSWORD');
+$dbPassword = $dbPassword === false ? '' : $dbPassword;
+
+if (getenv('APP_ENV') === 'test' && $dbName !== 'vite_gourmand_test') {
+    throw new RuntimeException('En test, seule la base vite_gourmand_test est autorisée.');
+}
+if (getenv('APP_ENV') === 'production'
+    && (getenv('DB_NAME') === false || getenv('DB_USER') === false || getenv('DB_PASSWORD') === false)) {
+    throw new RuntimeException('La configuration MySQL explicite est requise en production.');
+}
 
 try {
     $pdo = new PDO(
-        "mysql:host={$host};port={$port};dbname={$dbname};charset=utf8mb4",
-        $username,
-        $password,
+        "mysql:host={$dbHost};port={$dbPort};dbname={$dbName};charset=utf8mb4",
+        $dbUsername,
+        $dbPassword,
         [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,

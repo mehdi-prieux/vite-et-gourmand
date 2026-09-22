@@ -26,6 +26,18 @@ CREATE TABLE menu (
     disponible BOOLEAN DEFAULT TRUE
 );
 
+CREATE TABLE reinitialisation_mot_de_passe (
+    reinitialisation_id INT AUTO_INCREMENT PRIMARY KEY,
+    utilisateur_id INT NOT NULL,
+    token_hash CHAR(64) NOT NULL UNIQUE,
+    expire_le DATETIME NOT NULL,
+    utilise_le DATETIME NULL,
+    cree_le DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (utilisateur_id) REFERENCES utilisateur(utilisateur_id) ON DELETE CASCADE,
+    INDEX idx_reset_utilisateur (utilisateur_id),
+    INDEX idx_reset_expiration (expire_le)
+);
+
 CREATE TABLE image_menu (
     image_id INT AUTO_INCREMENT PRIMARY KEY,
     menu_id INT NOT NULL,
@@ -68,6 +80,9 @@ CREATE TABLE commande (
     date_prestation DATE,
     heure_livraison TIME,
     lieu_livraison VARCHAR(255),
+    ville_livraison VARCHAR(100),
+    distance_km DECIMAL(8,2) NOT NULL DEFAULT 0,
+    frais_livraison DECIMAL(10,2) NOT NULL DEFAULT 0,
     nombre_personnes INT,
     statut ENUM(
         'en attente',
@@ -93,12 +108,26 @@ CREATE TABLE suivi_commande (
     FOREIGN KEY(commande_id) REFERENCES commande(commande_id)
 );
 
+CREATE TABLE intervention_commande (
+    intervention_id INT AUTO_INCREMENT PRIMARY KEY,
+    commande_id INT NOT NULL,
+    employe_id INT NOT NULL,
+    type_intervention ENUM('modification','annulation') NOT NULL,
+    mode_contact ENUM('email','telephone') NOT NULL,
+    motif TEXT NOT NULL,
+    cree_le DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (commande_id) REFERENCES commande(commande_id) ON DELETE CASCADE,
+    FOREIGN KEY (employe_id) REFERENCES utilisateur(utilisateur_id),
+    INDEX idx_intervention_commande (commande_id)
+);
+
 CREATE TABLE avis (
     avis_id INT AUTO_INCREMENT PRIMARY KEY,
     utilisateur_id INT,
     commande_id INT,
     note INT CHECK(note BETWEEN 1 AND 5),
     commentaire TEXT,
+    statut ENUM('en attente','validé','refusé') NOT NULL DEFAULT 'en attente',
     valide BOOLEAN DEFAULT FALSE,
     FOREIGN KEY(utilisateur_id) REFERENCES utilisateur(utilisateur_id),
     FOREIGN KEY(commande_id) REFERENCES commande(commande_id)

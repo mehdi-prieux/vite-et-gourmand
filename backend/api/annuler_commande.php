@@ -91,6 +91,8 @@ try {
         throw new RuntimeException('Impossible de restituer le stock.');
     }
     $pdo->commit();
+    require_once __DIR__ . '/../services/NoSqlStatistics.php';
+    projectOrderToNoSql($pdo, $commandeId);
     sendJsonResponse(['message' => 'Commande annulée et historisée. Le stock a été restitué.', 'commande_id' => $commandeId, 'statut' => 'annulée']);
 } catch (Throwable $e) {
     if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) {

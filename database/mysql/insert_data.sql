@@ -12,7 +12,7 @@ VALUES
 'client@test.com',
 '0600000000',
 'Bordeaux',
-'$2y$10$password',
+'$2y$12$VBVBOf1mbFEF2aU/DbhOXOZBt.c1kUf.dLp6iHZQjLbCmDIpp3Gvm',
 'utilisateur'),
 
 
@@ -21,7 +21,7 @@ VALUES
 'employee@test.com',
 '0611111111',
 'Bordeaux',
-'$2y$10$password',
+'$2y$12$BV4wNv5SlzdZzbwLBmkWB.7JeMEpq82sWMccJXuXCLZTruHAVRrK6',
 'employe'),
 
 
@@ -30,7 +30,7 @@ VALUES
 'admin@test.com',
 '0622222222',
 'Bordeaux',
-'$2y$10$password',
+'$2y$12$pT8.y/TSkg5ZCaMiz7uemu8MKuRmlVY56z9OXXZ/n3hNfc7Gy058i',
 'administrateur');
 
 
@@ -127,7 +127,7 @@ VALUES
 -- COMMANDE TEST
 
 INSERT INTO commande
-(utilisateur_id,menu_id,date_prestation,heure_livraison,lieu_livraison,nombre_personnes,prix_total)
+(utilisateur_id,menu_id,date_prestation,heure_livraison,lieu_livraison,ville_livraison,nombre_personnes,prix_total)
 VALUES
 
-(1,1,'2026-01-15','12:00','Bordeaux',15,607.50);
+(1,1,'2030-01-15','12:00','1 place de la Bourse','Bordeaux',15,607.50);

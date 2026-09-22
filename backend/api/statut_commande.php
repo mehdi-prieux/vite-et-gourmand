@@ -70,14 +70,19 @@ try {
         sendJsonResponse(['erreur' => 'Accès refusé.'], 403);
         exit;
     }
-    $stmt = $pdo->prepare('SELECT statut FROM commande WHERE commande_id = :id FOR UPDATE');
+    $stmt = $pdo->prepare(
+        'SELECT c.statut, u.email, u.prenom
+         FROM commande AS c INNER JOIN utilisateur AS u ON u.utilisateur_id = c.utilisateur_id
+         WHERE c.commande_id = :id FOR UPDATE'
+    );
     $stmt->execute(['id' => $commandeId]);
-    $ancienStatut = $stmt->fetchColumn();
-    if ($ancienStatut === false) {
+    $commande = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$commande) {
         $pdo->rollBack();
         sendJsonResponse(['erreur' => 'Commande introuvable.'], 404);
         exit;
     }
+    $ancienStatut = $commande['statut'];
     if (!in_array($nouveauStatut, $transitions[$ancienStatut] ?? [], true)) {
         $pdo->rollBack();
         sendJsonResponse(['erreur' => 'Transition de statut non autorisée.'], 409);
@@ -88,6 +93,22 @@ try {
     $history = $pdo->prepare('INSERT INTO suivi_commande (commande_id, ancien_statut, nouveau_statut) VALUES (:commande_id, :ancien_statut, :nouveau_statut)');
     $history->execute(['commande_id' => $commandeId, 'ancien_statut' => $ancienStatut, 'nouveau_statut' => $nouveauStatut]);
     $pdo->commit();
+    require_once __DIR__ . '/../services/NoSqlStatistics.php';
+    projectOrderToNoSql($pdo, $commandeId);
+    if (in_array($nouveauStatut, ['en attente du retour matériel', 'terminée'], true)) {
+        try {
+            require_once __DIR__ . '/../services/Mailer.php';
+            $subject = $nouveauStatut === 'terminée'
+                ? 'Votre commande est terminée'
+                : 'Retour du matériel de votre commande';
+            $message = $nouveauStatut === 'terminée'
+                ? "Bonjour {$commande['prenom']},\n\nVotre commande n°{$commandeId} est terminée. Vous pouvez maintenant déposer un avis depuis votre espace client.\n"
+                : "Bonjour {$commande['prenom']},\n\nVotre commande n°{$commandeId} attend le retour du matériel. Merci de contacter Vite & Gourmand et de restituer le matériel sous 10 jours ouvrés. Au-delà, des frais de 600 € peuvent être appliqués conformément aux CGV.\n";
+            sendApplicationMail($commande['email'], $subject, $message);
+        } catch (Throwable $mailError) {
+            error_log('Statut modifié, mais e-mail non envoyé : ' . $mailError->getMessage());
+        }
+    }
     sendJsonResponse(['message' => 'Statut mis à jour.', 'commande_id' => $commandeId, 'ancien_statut' => $ancienStatut, 'nouveau_statut' => $nouveauStatut]);
 } catch (Throwable $e) {
     if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) {

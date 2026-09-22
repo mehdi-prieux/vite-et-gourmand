@@ -33,7 +33,7 @@ if (!is_array($input) || array_is_list($input)) {
     exit;
 }
 
-$fields = ['nom' => 100, 'prenom' => 100, 'email' => 150];
+$fields = ['nom' => 100, 'prenom' => 100, 'email' => 150, 'telephone' => 20, 'adresse' => 255];
 $values = [];
 foreach ($fields as $field => $maxLength) {
     if (!isset($input[$field]) || !is_string($input[$field])) {
@@ -53,6 +53,10 @@ if (!filter_var($values['email'], FILTER_VALIDATE_EMAIL)) {
     sendJsonResponse(['erreur' => 'Adresse e-mail invalide.'], 422);
     exit;
 }
+if (!preg_match('/^[0-9+(). -]{6,20}$/', $values['telephone'])) {
+    sendJsonResponse(['erreur' => 'Numéro de téléphone invalide.'], 422);
+    exit;
+}
 
 $password = $input['mot_de_passe'] ?? null;
 if (!is_string($password) || strlen($password) < 12 || strlen($password) > 72
@@ -62,15 +66,6 @@ if (!is_string($password) || strlen($password) < 12 || strlen($password) > 72
     || !preg_match('/[^A-Za-z0-9]/', $password)) {
     sendJsonResponse(['erreur' => 'Le mot de passe doit contenir entre 12 et 72 octets, avec au moins une majuscule, une minuscule, un chiffre et un caractère spécial.'], 422);
     exit;
-}
-
-foreach (['telephone' => 20, 'adresse' => 255] as $field => $maxLength) {
-    $value = $input[$field] ?? null;
-    if ($value !== null && (!is_string($value) || strlen(trim($value)) > $maxLength)) {
-        sendJsonResponse(['erreur' => 'Coordonnées invalides.'], 422);
-        exit;
-    }
-    $values[$field] = $value === null ? null : trim($value);
 }
 
 try {
@@ -85,7 +80,18 @@ try {
         'mot_de_passe' => password_hash($password, PASSWORD_DEFAULT),
         'role' => 'utilisateur',
     ]);
-    sendJsonResponse(['message' => 'Compte créé.', 'utilisateur_id' => (int) $pdo->lastInsertId()], 201);
+    $utilisateurId = (int) $pdo->lastInsertId();
+    try {
+        require_once __DIR__ . '/../services/Mailer.php';
+        sendApplicationMail(
+            $values['email'],
+            'Bienvenue chez Vite & Gourmand',
+            "Bonjour {$values['prenom']},\n\nVotre compte Vite & Gourmand a bien été créé. Vous pouvez maintenant consulter les menus et préparer votre première commande.\n"
+        );
+    } catch (Throwable $mailError) {
+        error_log('Compte créé, mais e-mail de bienvenue non envoyé : ' . $mailError->getMessage());
+    }
+    sendJsonResponse(['message' => 'Compte créé.', 'utilisateur_id' => $utilisateurId], 201);
 } catch (PDOException $e) {
     if ($e->getCode() === '23000') {
         sendJsonResponse(['erreur' => 'Adresse e-mail déjà utilisée.'], 409);

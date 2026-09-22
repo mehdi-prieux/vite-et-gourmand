@@ -54,13 +54,9 @@ if ($menuId === false || $personnes === false || !$dateValide || !$heureValide
     sendJsonResponse(['erreur' => 'Données de commande invalides : choisir notamment une date et une heure futures et indiquer ville_livraison.'], 422);
     exit;
 }
-// Aucun kilométrage vérifiable n'est disponible dans le modèle actuel.
-// Ne pas inventer les 0,59 €/km ni accepter un kilométrage fourni librement par le client.
-if (strtolower(trim($ville)) !== 'bordeaux') {
-    sendJsonResponse(['erreur' => 'Livraison hors Bordeaux : calcul de distance indisponible. Commande non enregistrée.'], 422);
-    exit;
-}
 try {
+    require_once __DIR__ . '/../services/DeliveryCalculator.php';
+    $delivery = calculateDelivery(trim($lieu), trim($ville));
     require_once __DIR__ . '/../config/session.php';
     startSecureSession();
     $utilisateurId = $_SESSION['utilisateur_id'] ?? null;
@@ -79,7 +75,7 @@ try {
     }
     require_once __DIR__ . '/../config/database.php';
     $pdo->beginTransaction();
-    $client = $pdo->prepare('SELECT actif, role FROM utilisateur WHERE utilisateur_id = :id FOR UPDATE');
+    $client = $pdo->prepare('SELECT actif, role, email, prenom FROM utilisateur WHERE utilisateur_id = :id FOR UPDATE');
     $client->execute(['id' => $utilisateurId]);
     $compte = $client->fetch(PDO::FETCH_ASSOC);
     if (!$compte || !(bool) $compte['actif'] || $compte['role'] !== 'utilisateur') {
@@ -105,10 +101,10 @@ try {
     // de 10 % dès cinq convives supplémentaires. Frais Bordeaux : 0 €.
     $prixMenu = round((float) $details['prix'] * $personnes / $minimum, 2);
     $reduction = $personnes >= $minimum + 5 ? round($prixMenu * 0.10, 2) : 0.0;
-    $prixTotal = number_format($prixMenu - $reduction, 2, '.', '');
+    $prixTotal = number_format($prixMenu - $reduction + $delivery['fee'], 2, '.', '');
     $insert = $pdo->prepare(
-        'INSERT INTO commande (utilisateur_id, menu_id, date_prestation, heure_livraison, lieu_livraison, nombre_personnes, prix_total, statut)
-         VALUES (:utilisateur_id, :menu_id, :date_prestation, :heure_livraison, :lieu_livraison, :nombre_personnes, :prix_total, :statut)'
+        'INSERT INTO commande (utilisateur_id, menu_id, date_prestation, heure_livraison, lieu_livraison, ville_livraison, distance_km, frais_livraison, nombre_personnes, prix_total, statut)
+         VALUES (:utilisateur_id, :menu_id, :date_prestation, :heure_livraison, :lieu_livraison, :ville_livraison, :distance_km, :frais_livraison, :nombre_personnes, :prix_total, :statut)'
     );
     $insert->execute([
         'utilisateur_id' => $utilisateurId,
@@ -116,6 +112,9 @@ try {
         'date_prestation' => $date,
         'heure_livraison' => $heure,
         'lieu_livraison' => trim($lieu),
+        'ville_livraison' => trim($ville),
+        'distance_km' => number_format($delivery['distance_km'], 2, '.', ''),
+        'frais_livraison' => number_format($delivery['fee'], 2, '.', ''),
         'nombre_personnes' => $personnes,
         'prix_total' => $prixTotal,
         'statut' => 'en attente',
@@ -129,7 +128,21 @@ try {
     $historique = $pdo->prepare('INSERT INTO suivi_commande (commande_id, ancien_statut, nouveau_statut) VALUES (:commande_id, NULL, :nouveau_statut)');
     $historique->execute(['commande_id' => $commandeId, 'nouveau_statut' => 'en attente']);
     $pdo->commit();
-    sendJsonResponse(['message' => 'Demande de commande enregistrée, en attente de validation.', 'commande_id' => $commandeId, 'prix_menu' => number_format($prixMenu, 2, '.', ''), 'reduction' => number_format($reduction, 2, '.', ''), 'frais_livraison' => '0.00', 'prix_total' => $prixTotal, 'statut' => 'en attente'], 201);
+    require_once __DIR__ . '/../services/NoSqlStatistics.php';
+    projectOrderToNoSql($pdo, $commandeId);
+    try {
+        require_once __DIR__ . '/../services/Mailer.php';
+        sendApplicationMail(
+            $compte['email'],
+            'Confirmation de votre demande de commande',
+            "Bonjour {$compte['prenom']},\n\nVotre demande de commande n°{$commandeId} a bien été enregistrée pour un montant de {$prixTotal} €. Son statut est « en attente ».\n"
+        );
+    } catch (Throwable $mailError) {
+        error_log('Commande créée, mais e-mail de confirmation non envoyé : ' . $mailError->getMessage());
+    }
+    sendJsonResponse(['message' => 'Demande de commande enregistrée, en attente de validation.', 'commande_id' => $commandeId, 'prix_menu' => number_format($prixMenu, 2, '.', ''), 'reduction' => number_format($reduction, 2, '.', ''), 'distance_km' => number_format($delivery['distance_km'], 2, '.', ''), 'frais_livraison' => number_format($delivery['fee'], 2, '.', ''), 'prix_total' => $prixTotal, 'statut' => 'en attente'], 201);
+} catch (DomainException $e) {
+    sendJsonResponse(['erreur' => $e->getMessage()], 422);
 } catch (Throwable $e) {
     if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) {
         $pdo->rollBack();

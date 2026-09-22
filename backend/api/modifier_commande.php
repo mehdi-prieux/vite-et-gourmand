@@ -52,11 +52,9 @@ if ($commandeId === false || $commandeId === null || $personnes === false || $pe
     sendJsonResponse(['erreur' => 'Données invalides : indiquez notamment une date et une heure futures.'], 422);
     exit;
 }
-if (strtolower(trim($ville)) !== 'bordeaux') {
-    sendJsonResponse(['erreur' => 'Livraison hors Bordeaux : calcul de distance indisponible. Modification refusée.'], 422);
-    exit;
-}
 try {
+    require_once __DIR__ . '/../services/DeliveryCalculator.php';
+    $delivery = calculateDelivery(trim($lieu), trim($ville));
     require_once __DIR__ . '/../config/session.php';
     startSecureSession();
     $utilisateurId = $_SESSION['utilisateur_id'] ?? null;
@@ -107,14 +105,19 @@ try {
     }
     $prixMenu = round((float) $menu['prix'] * $personnes / $minimum, 2);
     $reduction = $personnes >= $minimum + 5 ? round($prixMenu * 0.10, 2) : 0.0;
-    $prixTotal = number_format($prixMenu - $reduction, 2, '.', '');
-    $update = $pdo->prepare("UPDATE commande SET date_prestation = :date, heure_livraison = :heure, lieu_livraison = :lieu, nombre_personnes = :personnes, prix_total = :prix WHERE commande_id = :id AND utilisateur_id = :utilisateur_id AND statut = 'en attente'");
+    $prixTotal = number_format($prixMenu - $reduction + $delivery['fee'], 2, '.', '');
+    $update = $pdo->prepare("UPDATE commande SET date_prestation = :date, heure_livraison = :heure, lieu_livraison = :lieu, ville_livraison = :ville, distance_km = :distance, frais_livraison = :frais, nombre_personnes = :personnes, prix_total = :prix WHERE commande_id = :id AND utilisateur_id = :utilisateur_id AND statut = 'en attente'");
     $update->execute([
-        'date' => $date, 'heure' => $heure, 'lieu' => trim($lieu), 'personnes' => $personnes,
+        'date' => $date, 'heure' => $heure, 'lieu' => trim($lieu), 'ville' => trim($ville),
+        'distance' => number_format($delivery['distance_km'], 2, '.', ''), 'frais' => number_format($delivery['fee'], 2, '.', ''), 'personnes' => $personnes,
         'prix' => $prixTotal, 'id' => $commandeId, 'utilisateur_id' => $utilisateurId,
     ]);
     $pdo->commit();
-    sendJsonResponse(['message' => 'Commande en attente modifiée.', 'commande_id' => $commandeId, 'prix_menu' => number_format($prixMenu, 2, '.', ''), 'reduction' => number_format($reduction, 2, '.', ''), 'frais_livraison' => '0.00', 'prix_total' => $prixTotal, 'statut' => 'en attente']);
+    require_once __DIR__ . '/../services/NoSqlStatistics.php';
+    projectOrderToNoSql($pdo, $commandeId);
+    sendJsonResponse(['message' => 'Commande en attente modifiée.', 'commande_id' => $commandeId, 'prix_menu' => number_format($prixMenu, 2, '.', ''), 'reduction' => number_format($reduction, 2, '.', ''), 'distance_km' => number_format($delivery['distance_km'], 2, '.', ''), 'frais_livraison' => number_format($delivery['fee'], 2, '.', ''), 'prix_total' => $prixTotal, 'statut' => 'en attente']);
+} catch (DomainException $e) {
+    sendJsonResponse(['erreur' => $e->getMessage()], 422);
 } catch (Throwable $e) {
     if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) {
         $pdo->rollBack();

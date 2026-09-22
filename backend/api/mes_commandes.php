@@ -29,7 +29,8 @@ try {
     require_once __DIR__ . '/../config/database.php';
     $stmt = $pdo->prepare(
         'SELECT c.commande_id, c.menu_id, m.titre AS menu_titre,
-                c.date_prestation, c.heure_livraison, c.lieu_livraison,
+                c.date_prestation, c.heure_livraison, c.lieu_livraison, c.ville_livraison,
+                c.distance_km, c.frais_livraison,
                 c.nombre_personnes, c.statut, c.prix_total
          FROM commande AS c
          INNER JOIN menu AS m ON m.menu_id = c.menu_id

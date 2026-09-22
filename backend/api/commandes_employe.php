@@ -46,7 +46,8 @@ try {
         exit;
     }
 
-    $sql = 'SELECT c.commande_id, c.date_prestation, c.heure_livraison, c.lieu_livraison,
+    $sql = 'SELECT c.commande_id, c.date_prestation, c.heure_livraison, c.lieu_livraison, c.ville_livraison,
+                   c.distance_km, c.frais_livraison,
                    c.nombre_personnes, c.statut, c.prix_total,
                    m.menu_id, m.titre AS menu_titre,
                    u.utilisateur_id, u.nom AS client_nom, u.prenom AS client_prenom,
