@@ -203,13 +203,6 @@ CREATE TABLE horaire (
 
     heure_fermeture TIME
 );
-CREATE TABLE commande (
-    commande_id INT AUTO_INCREMENT PRIMARY KEY,
-    client_nom VARCHAR(100) NOT NULL,
-    telephone VARCHAR(20),
-    statut VARCHAR(50) DEFAULT 'en attente',
-    date_commande TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
 
 
 CREATE TABLE commande_plat (
