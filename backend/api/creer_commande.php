@@ -4,56 +4,54 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/_response.php';
 header('Cache-Control: no-store');
-
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
     header('Allow: POST');
     sendJsonResponse(['erreur' => 'Méthode non autorisée.'], 405);
     exit;
 }
-
 if (stripos($_SERVER['CONTENT_TYPE'] ?? '', 'application/json') !== 0) {
     sendJsonResponse(['erreur' => 'Le contenu doit être au format JSON.'], 415);
     exit;
 }
-
 $body = file_get_contents('php://input');
 if ($body === false || strlen($body) > 16384) {
     sendJsonResponse(['erreur' => 'Requête invalide ou trop volumineuse.'], 400);
     exit;
 }
-
 try {
     $input = json_decode($body, true, 32, JSON_THROW_ON_ERROR);
 } catch (JsonException $e) {
     sendJsonResponse(['erreur' => 'JSON invalide.'], 400);
     exit;
 }
-
 if (!is_array($input) || array_is_list($input)) {
     sendJsonResponse(['erreur' => 'Un objet JSON est attendu.'], 400);
     exit;
 }
-
 $menuId = filter_var($input['menu_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
 $personnes = filter_var($input['nombre_personnes'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 10000]]);
 $date = $input['date_prestation'] ?? null;
 $heure = $input['heure_livraison'] ?? null;
 $lieu = $input['lieu_livraison'] ?? null;
-$token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
-
+$ville = $input['ville_livraison'] ?? null;
 $dateValide = is_string($date) && preg_match('/^\d{4}-\d{2}-\d{2}$/D', $date);
 if ($dateValide) {
     $parsed = DateTimeImmutable::createFromFormat('!Y-m-d', $date);
     $dateValide = $parsed !== false && $parsed->format('Y-m-d') === $date && $date >= date('Y-m-d');
 }
-
 if ($menuId === false || $personnes === false || !$dateValide
     || !is_string($heure) || !preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/D', $heure)
-    || !is_string($lieu) || trim($lieu) === '' || strlen(trim($lieu)) > 255) {
-    sendJsonResponse(['erreur' => 'Données de commande invalides.'], 422);
+    || !is_string($lieu) || trim($lieu) === '' || strlen(trim($lieu)) > 255
+    || !is_string($ville) || trim($ville) === '' || strlen(trim($ville)) > 100) {
+    sendJsonResponse(['erreur' => 'Données de commande invalides. Indiquer notamment ville_livraison.'], 422);
     exit;
 }
-
+// Aucun kilométrage vérifiable n'est disponible dans le modèle actuel.
+// Ne pas inventer les 0,59 €/km ni accepter un kilométrage fourni librement par le client.
+if (mb_strtolower(trim($ville), 'UTF-8') !== 'bordeaux') {
+    sendJsonResponse(['erreur' => 'Livraison hors Bordeaux : calcul de distance indisponible. Commande non enregistrée.'], 422);
+    exit;
+}
 try {
     require_once __DIR__ . '/../config/session.php';
     startSecureSession();
@@ -66,14 +64,13 @@ try {
         sendJsonResponse(['erreur' => 'Accès réservé aux clients.'], 403);
         exit;
     }
+    $token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
     if (!is_string($token) || !isset($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $token)) {
         sendJsonResponse(['erreur' => 'Jeton CSRF invalide.'], 403);
         exit;
     }
-
     require_once __DIR__ . '/../config/database.php';
     $pdo->beginTransaction();
-
     $client = $pdo->prepare('SELECT actif FROM utilisateur WHERE utilisateur_id = :id FOR UPDATE');
     $client->execute(['id' => $utilisateurId]);
     if (!(bool) $client->fetchColumn()) {
@@ -81,7 +78,6 @@ try {
         sendJsonResponse(['erreur' => 'Compte indisponible.'], 403);
         exit;
     }
-
     $menu = $pdo->prepare('SELECT nombre_personnes_min, prix, stock, disponible FROM menu WHERE menu_id = :id FOR UPDATE');
     $menu->execute(['id' => $menuId]);
     $details = $menu->fetch(PDO::FETCH_ASSOC);
@@ -90,18 +86,20 @@ try {
         sendJsonResponse(['erreur' => 'Menu indisponible.'], 409);
         exit;
     }
-    if ($personnes < (int) $details['nombre_personnes_min']) {
+    $minimum = (int) $details['nombre_personnes_min'];
+    if ($minimum < 1 || $personnes < $minimum || (float) $details['prix'] < 0) {
         $pdo->rollBack();
-        sendJsonResponse(['erreur' => 'Nombre de personnes inférieur au minimum du menu.'], 422);
+        sendJsonResponse(['erreur' => 'Nombre de personnes ou tarif du menu invalide.'], 422);
         exit;
     }
-
-    // Le tarif du menu correspond au minimum de personnes ; les convives
-    // supplémentaires sont facturés au prorata, arrondi au centime.
-    $prixTotal = number_format(round((float) $details['prix'] * $personnes / (int) $details['nombre_personnes_min'], 2), 2, '.', '');
+    // Prix du menu pour le minimum de convives, supplément proportionnel ; remise
+    // de 10 % dès cinq convives supplémentaires. Frais Bordeaux : 0 €.
+    $prixMenu = round((float) $details['prix'] * $personnes / $minimum, 2);
+    $reduction = $personnes >= $minimum + 5 ? round($prixMenu * 0.10, 2) : 0.0;
+    $prixTotal = number_format($prixMenu - $reduction, 2, '.', '');
     $insert = $pdo->prepare(
-        'INSERT INTO commande (utilisateur_id, menu_id, date_prestation, heure_livraison, lieu_livraison, nombre_personnes, prix_total)
-         VALUES (:utilisateur_id, :menu_id, :date_prestation, :heure_livraison, :lieu_livraison, :nombre_personnes, :prix_total)'
+        'INSERT INTO commande (utilisateur_id, menu_id, date_prestation, heure_livraison, lieu_livraison, nombre_personnes, prix_total, statut)
+         VALUES (:utilisateur_id, :menu_id, :date_prestation, :heure_livraison, :lieu_livraison, :nombre_personnes, :prix_total, :statut)'
     );
     $insert->execute([
         'utilisateur_id' => $utilisateurId,
@@ -111,6 +109,7 @@ try {
         'lieu_livraison' => trim($lieu),
         'nombre_personnes' => $personnes,
         'prix_total' => $prixTotal,
+        'statut' => 'en attente',
     ]);
     $commandeId = (int) $pdo->lastInsertId();
     $update = $pdo->prepare('UPDATE menu SET stock = stock - 1 WHERE menu_id = :id AND stock > 0');
@@ -119,7 +118,7 @@ try {
         throw new RuntimeException('Stock modifié pendant la commande.');
     }
     $pdo->commit();
-    sendJsonResponse(['message' => 'Commande créée.', 'commande_id' => $commandeId, 'prix_total' => $prixTotal, 'statut' => 'accepté'], 201);
+    sendJsonResponse(['message' => 'Demande de commande enregistrée, en attente de validation.', 'commande_id' => $commandeId, 'prix_menu' => number_format($prixMenu, 2, '.', ''), 'reduction' => number_format($reduction, 2, '.', ''), 'frais_livraison' => '0.00', 'prix_total' => $prixTotal, 'statut' => 'en attente'], 201);
 } catch (Throwable $e) {
     if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) {
         $pdo->rollBack();
