@@ -46,9 +46,10 @@ if ($menuId === false || $personnes === false || !$dateValide
     sendJsonResponse(['erreur' => 'Données de commande invalides. Indiquer notamment ville_livraison.'], 422);
     exit;
 }
+// Le nom Bordeaux ne contient que des caractères ASCII : strtolower suffit ici.
 // Aucun kilométrage vérifiable n'est disponible dans le modèle actuel.
 // Ne pas inventer les 0,59 €/km ni accepter un kilométrage fourni librement par le client.
-if (mb_strtolower(trim($ville), 'UTF-8') !== 'bordeaux') {
+if (strtolower(trim($ville)) !== 'bordeaux') {
     sendJsonResponse(['erreur' => 'Livraison hors Bordeaux : calcul de distance indisponible. Commande non enregistrée.'], 422);
     exit;
 }
