@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gestion du catalogue — Vite &amp; Gourmand</title>
+  <link rel="stylesheet" href="assets/site.css">
+  <script src="assets/layout.js" defer></script>
+  <script src="assets/site.js" defer></script>
+  <script src="assets/catalog-management.js" defer></script>
+</head>
+<body data-page="account">
+  <a class="skip-link" href="#contenu">Aller au contenu</a>
+  <header class="site-header" data-site-header></header>
+  <main id="contenu" class="section container">
+    <p><a href="employe.html">← Retour aux commandes</a></p>
+    <div class="section-heading"><p class="eyebrow">Espace personnel</p><h1>Menus, plats et horaires</h1></div>
+    <p id="message" role="status" aria-live="polite"></p>
+    <div id="content" hidden>
+      <section class="panel">
+        <h2 id="menu-form-title">Ajouter un menu</h2>
+        <form id="menu-form" class="form">
+          <input name="menu_id" type="hidden">
+          <label>Titre<input name="titre" maxlength="150" required></label>
+          <label>Description<textarea name="description" required></textarea></label>
+          <label>Thème<input name="theme" maxlength="50" required></label>
+          <label>Régime<input name="regime" maxlength="50" required></label>
+          <label>Minimum de personnes<input name="nombre_personnes_min" type="number" min="1" required></label>
+          <label>Prix pour ce minimum<input name="prix" type="number" min="0" step="0.01" required></label>
+          <label>Conditions<textarea name="conditions_menu" required></textarea></label>
+          <label>Stock<input name="stock" type="number" min="0" required></label>
+          <label><input name="disponible" type="checkbox" checked> Disponible</label>
+          <fieldset><legend>Composition du menu</legend><div id="menu-dishes" class="form"></div></fieldset>
+          <label>Galerie d’images <textarea name="images" placeholder="Une URL HTTPS ou un chemin assets/ par ligne"></textarea></label>
+          <div class="actions"><button type="submit">Enregistrer le menu</button><button id="cancel-menu-edit" type="button" class="button secondary" hidden>Annuler l’édition</button></div>
+        </form>
+      </section>
+      <section><h2>Menus actuels</h2><div id="menus" class="cards"></div></section>
+      <section class="panel">
+        <h2 id="dish-form-title">Ajouter un plat</h2>
+        <form id="dish-form" class="form">
+          <input name="plat_id" type="hidden">
+          <label>Nom<input name="nom" maxlength="100" required></label>
+          <label>Type<select name="type_plat"><option>entrée</option><option>plat</option><option>dessert</option></select></label>
+          <label>Description<textarea name="description"></textarea></label>
+          <fieldset><legend>Allergènes</legend><div id="dish-allergens" class="form"></div></fieldset>
+          <div class="actions"><button type="submit">Enregistrer le plat</button><button id="cancel-dish-edit" type="button" class="button secondary" hidden>Annuler l’édition</button></div>
+        </form>
+      </section>
+      <section><h2>Plats actuels</h2><div id="dishes" class="cards"></div></section>
+      <section class="panel">
+        <h2 id="hours-form-title">Ajouter un horaire</h2>
+        <form id="hours-form" class="form">
+          <input name="horaire_id" type="hidden">
+          <label>Jour<input name="jour" maxlength="20" required></label>
+          <label>Ouverture<input name="heure_ouverture" type="time" required></label>
+          <label>Fermeture<input name="heure_fermeture" type="time" required></label>
+          <div class="actions"><button type="submit">Enregistrer l’horaire</button><button id="cancel-hours-edit" type="button" class="button secondary" hidden>Annuler l’édition</button></div>
+        </form>
+      </section>
+      <section><h2>Horaires actuels</h2><div id="hours" class="cards"></div></section>
+    </div>
+  </main>
+  <footer class="site-footer" data-site-footer></footer>
+</body>
+</html>

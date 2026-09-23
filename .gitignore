@@ -18,3 +18,7 @@ Thumbs.db
 
 # Fichiers sensibles
 backend/config/local.php
+
+# Copie nominative destinée exclusivement au dépôt Studi, jamais au dépôt public
+output/copie_studi_vite_et_gourmand.docx
+output/ECF_TPDeveloppeurWebEtWebMobile_copiearendre_*.docx

@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Administration — Vite &amp; Gourmand</title>
+  <link rel="stylesheet" href="assets/site.css">
+  <script src="assets/layout.js" defer></script><script src="assets/site.js" defer></script><script src="assets/admin.js" defer></script>
+</head>
+<body data-page="account">
+  <a class="skip-link" href="#contenu">Aller au contenu</a><header class="site-header" data-site-header></header>
+  <main id="contenu" class="section container">
+    <div class="section-heading"><p class="eyebrow">Administration</p><h1>Personnel et statistiques</h1><p>La création d’un compte administrateur n’est jamais proposée ici.</p></div>
+    <p id="message" role="status" aria-live="polite"></p>
+    <section id="login" class="panel"><h2>Connexion administrateur</h2><form id="login-form" class="form"><label>Adresse e-mail<input name="email" type="email" autocomplete="username" required></label><label>Mot de passe<input name="mot_de_passe" type="password" autocomplete="current-password" required></label><button type="submit">Se connecter</button></form></section>
+    <div id="dashboard" hidden>
+      <section class="panel"><h2>Créer un employé</h2><form id="employee-form" class="form"><label>Nom<input name="nom" maxlength="100" required></label><label>Prénom<input name="prenom" maxlength="100" required></label><label>Adresse e-mail<input name="email" type="email" maxlength="150" required></label><label>Mot de passe initial<input name="mot_de_passe" type="password" minlength="12" maxlength="72" required></label><button type="submit">Créer le compte</button></form></section>
+      <section><h2>Employés</h2><div id="employees" class="cards"></div></section>
+      <section class="panel"><h2>Statistiques commerciales</h2><p class="muted">Commandes non annulées, selon leur date de prestation. Données issues de la base documentaire CouchDB.</p><form id="stats-form" class="filters"><label>Du<input name="date_debut" type="date"></label><label>Au<input name="date_fin" type="date"></label><label>Menu<select name="menu_id"><option value="">Tous les menus</option></select></label><button type="submit">Appliquer</button><button id="reset-stats" class="button secondary" type="button">Réinitialiser</button></form><p id="stats-summary" class="lead"></p><div id="stats-chart" class="stats-chart" aria-label="Commandes par menu"></div></section>
+    </div>
+  </main><footer class="site-footer" data-site-footer></footer>
+</body>
+</html>

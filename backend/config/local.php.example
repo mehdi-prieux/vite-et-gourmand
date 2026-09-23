@@ -1,0 +1,15 @@
+<?php
+
+// Copier en local.php sur l'hébergement uniquement, puis renseigner les vraies
+// valeurs dans ce fichier non versionné. Ne jamais publier ce fichier dans Git.
+return [
+    'APP_ENV' => 'production',
+    'DB_HOST' => 'hote-mysql-fourni-par-hebergeur',
+    'DB_PORT' => '3306',
+    'DB_NAME' => 'nom-de-la-base-hebergee',
+    'DB_USER' => 'utilisateur-technique',
+    'DB_PASSWORD' => 'mot-de-passe-a-renseigner-hors-git',
+    'APP_BASE_URL' => 'https://sous-domaine-gratuit.example/frontend',
+    'MAIL_FROM' => 'adresse-expediteur-a-configurer@example.test',
+    'CONTACT_EMAIL' => 'adresse-contact-a-configurer@example.test',
+];
