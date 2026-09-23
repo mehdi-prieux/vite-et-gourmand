@@ -2,7 +2,7 @@
 
 ## Démonstration gratuite urgente : état et limites
 
-InfinityFree est l'hébergement gratuit de démonstration choisi, avec le sous-domaine `vite-et-gourmand.42web.io` et la base MySQL dédiée `if0_42985265_vite_gourmand_demo`. Le site n'est pas encore déployé et aucune recette hébergée n'est validée. Le certificat HTTPS servi au sous-domaine doit encore être revérifié avant de diffuser l'URL. L'offre bloque `mail()` PHP et n'autorise pas les variables d'environnement usuelles : l'application peut lire un `backend/config/local.php` non versionné, à créer sur l'hébergement depuis `local.php.example`. Un mot de passe MySQL est apparu dans une capture d'écran : le propriétaire doit le remplacer avant tout déploiement. Ne saisir le nouveau secret que dans ce fichier privé, jamais dans Git ni dans la copie Studi. Ne déployer qu'une base de démonstration sans données réelles et avec les seuls comptes de démonstration destinés au jury.
+InfinityFree héberge la démonstration à <https://vite-et-gourmand.42web.io/frontend/>, avec la base MySQL dédiée `if0_42985265_vite_gourmand_demo`. Le 23 septembre 2026, HTTPS, l'accueil, le catalogue, les horaires et la connexion administrateur ont été vérifiés dans un navigateur. La recette hébergée complète n'est pas encore validée : les statistiques CouchDB y sont indisponibles et les e-mails réels ne sont pas configurés. L'offre bloque `mail()` PHP et n'autorise pas les variables d'environnement usuelles : l'application lit un `backend/config/local.php` non versionné sur l'hébergement. Un ancien mot de passe MySQL a été visible dans une capture : le propriétaire doit s'assurer qu'il a bien été remplacé. Ne jamais copier ce fichier privé dans Git ni dans la copie Studi. Cette instance est réservée à la démonstration, sans données réelles.
 
 Parcours minimal une fois le compte créé : créer un sous-domaine gratuit, créer une base MySQL dédiée, importer une copie adaptée des SQL (remplacer `CREATE DATABASE`/`USE vite_gourmand` par la base attribuée par l'hébergeur), transférer les dossiers `frontend`, `backend` et les ressources nécessaires dans `htdocs`, puis configurer le site et ouvrir `https://<sous-domaine>/frontend/`. Tester d'abord la connexion MySQL et les sessions HTTPS, puis les parcours principaux avec une recette navigateur. Ne pas qualifier les e-mails ou les statistiques de validés : `mail()` est indisponible et la projection CouchDB actuelle est limitée à la destination locale de test approuvée. Aucun accès CouchDB distant ne doit être ajouté sans autorisation spécifique.
 
@@ -21,7 +21,7 @@ Choisir un hébergeur PHP avec HTTPS, une base MySQL/MariaDB et une instance Cou
 7. Remplacer les mentions légales et CGV pédagogiques par les informations officielles validées. Vérifier les droits RGPD, l'adresse de contact, l'hébergeur et les conditions de retour du matériel.
 8. Effectuer une recette sur la préproduction, contrôler les logs et la sécurité HTTPS, puis seulement publier. Fournir les liens publics du dépôt, de l'application et de l'outil de projet dans la copie à rendre Studi.
 
-## Recette de préproduction à exécuter après déploiement, non réalisée à ce jour
+## Recette de préproduction à compléter après la première vérification publique
 
 | Parcours | Contrôle attendu |
 |---|---|
